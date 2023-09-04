@@ -7,7 +7,16 @@ import time
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtGui, QtCore
-from qtpy.QtWidgets import QPushButton, QLabel, QLineEdit, QMainWindow, QGridLayout, QButtonGroup, QMessageBox, QWidget
+from qtpy.QtWidgets import (
+    QPushButton,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QGridLayout,
+    QButtonGroup,
+    QMessageBox,
+    QWidget,
+)
 from matplotlib.colors import hsv_to_rgb
 from scipy import stats
 
@@ -19,11 +28,11 @@ from ..extraction.dcnv import oasis
 
 
 def masks_and_traces(ops, stat_manual, stat_orig):
-    """ main extraction function
-        inputs: ops and stat
-        creates cell and neuropil masks and extracts traces
-        returns: F (ROIs x time), Fneu (ROIs x time), F_chan2, Fneu_chan2, ops, stat
-        F_chan2 and Fneu_chan2 will be empty if no second channel
+    """main extraction function
+    inputs: ops and stat
+    creates cell and neuropil masks and extracts traces
+    returns: F (ROIs x time), Fneu (ROIs x time), F_chan2, Fneu_chan2, ops, stat
+    F_chan2 and Fneu_chan2 will be empty if no second channel
     """
 
     t0 = time.time()
@@ -32,15 +41,22 @@ def masks_and_traces(ops, stat_manual, stat_orig):
     for n in range(len(stat_orig)):
         stat_all.append(stat_orig[n])
 
-    stat_all = roi_stats(stat_all, ops["Ly"], ops["Lx"], aspect=ops.get("aspect", None),
-                         diameter=ops["diameter"])
+    stat_all = roi_stats(
+        stat_all,
+        ops["Ly"],
+        ops["Lx"],
+        aspect=ops.get("aspect", None),
+        diameter=ops["diameter"],
+    )
     cell_masks = [
-        masks.create_cell_mask(stat, Ly=ops["Ly"], Lx=ops["Lx"],
-                               allow_overlap=ops["allow_overlap"]) for stat in stat_all
+        masks.create_cell_mask(
+            stat, Ly=ops["Ly"], Lx=ops["Lx"], allow_overlap=ops["allow_overlap"]
+        )
+        for stat in stat_all
     ]
     cell_pix = masks.create_cell_pix(stat_all, Ly=ops["Ly"], Lx=ops["Lx"])
-    manual_roi_stats = stat_all[:len(stat_manual)]
-    manual_cell_masks = cell_masks[:len(stat_manual)]
+    manual_roi_stats = stat_all[: len(stat_manual)]
+    manual_cell_masks = cell_masks[: len(stat_manual)]
     manual_neuropil_masks = masks.create_neuropil_masks(
         ypixs=[stat["ypix"] for stat in manual_roi_stats],
         xpixs=[stat["xpix"] for stat in manual_roi_stats],
@@ -50,15 +66,18 @@ def masks_and_traces(ops, stat_manual, stat_orig):
     )
     print("Masks made in %0.2f sec." % (time.time() - t0))
 
-    F, Fneu, F_chan2, Fneu_chan2 = extract_traces_from_masks(ops, manual_cell_masks,
-                                                             manual_neuropil_masks)
+    F, Fneu, F_chan2, Fneu_chan2 = extract_traces_from_masks(
+        ops, manual_cell_masks, manual_neuropil_masks
+    )
 
     # compute activity statistics for classifier
-    npix = np.array([stat_orig[n]["npix"] for n in range(len(stat_orig))
-                    ]).astype("float32")
+    npix = np.array([stat_orig[n]["npix"] for n in range(len(stat_orig))]).astype(
+        "float32"
+    )
     for n in range(len(manual_roi_stats)):
         manual_roi_stats[n]["npix_norm"] = manual_roi_stats[n]["npix"] / np.mean(
-            npix[:100])  # What if there are less than 100 cells?
+            npix[:100]
+        )  # What if there are less than 100 cells?
         manual_roi_stats[n]["compact"] = 1
         manual_roi_stats[n]["footprint"] = 2
         manual_roi_stats[n]["manual"] = 1  # Add manual key
@@ -75,19 +94,23 @@ def masks_and_traces(ops, stat_manual, stat_orig):
         manual_roi_stats[n]["std"] = sd[n]
         manual_roi_stats[n]["med"] = [
             np.mean(manual_roi_stats[n]["ypix"]),
-            np.mean(manual_roi_stats[n]["xpix"])
+            np.mean(manual_roi_stats[n]["xpix"]),
         ]
 
-    dF = preprocess(F=dF, baseline=ops["baseline"], win_baseline=ops["win_baseline"],
-                    sig_baseline=ops["sig_baseline"], fs=ops["fs"],
-                    prctile_baseline=ops["prctile_baseline"])
+    dF = preprocess(
+        F=dF,
+        baseline=ops["baseline"],
+        win_baseline=ops["win_baseline"],
+        sig_baseline=ops["sig_baseline"],
+        fs=ops["fs"],
+        prctile_baseline=ops["prctile_baseline"],
+    )
     spks = oasis(F=dF, batch_size=ops["batch_size"], tau=ops["tau"], fs=ops["fs"])
 
     return F, Fneu, F_chan2, Fneu_chan2, spks, ops, manual_roi_stats
 
 
 class ViewButton(QPushButton):
-
     def __init__(self, bid, Text, parent=None):
         super(ViewButton, self).__init__(parent)
         self.setText(Text)
@@ -111,7 +134,6 @@ class ViewButton(QPushButton):
 
 
 class ROIDraw(QMainWindow):
-
     def __init__(self, parent):
         super(ROIDraw, self).__init__(parent)
         pg.setConfigOptions(imageAxisOrder="row-major")
@@ -123,12 +145,16 @@ class ROIDraw(QMainWindow):
         self.l0 = QGridLayout()
         # layout = QtGui.QFormLayout()
         self.cwidget.setLayout(self.l0)
-        self.stylePressed = ("QPushButton {Text-align: left; "
-                             "background-color: rgb(100,50,100); "
-                             "color:white;}")
-        self.styleUnpressed = ("QPushButton {Text-align: left; "
-                               "background-color: rgb(50,50,50); "
-                               "color:white;}")
+        self.stylePressed = (
+            "QPushButton {Text-align: left; "
+            "background-color: rgb(100,50,100); "
+            "color:white;}"
+        )
+        self.styleUnpressed = (
+            "QPushButton {Text-align: left; "
+            "background-color: rgb(50,50,50); "
+            "color:white;}"
+        )
 
         # self.p0 = pg.ViewBox(lockAspect=False,name="plot1",border=[100,100,100],invertY=True)
         self.win = pg.GraphicsLayoutWidget()
@@ -142,8 +168,9 @@ class ROIDraw(QMainWindow):
         self.p1.setMenuEnabled(False)
         self.p1.scene().sigMouseMoved.connect(self.mouse_moved)
 
-        self.p0 = self.win.addViewBox(name="plot1", lockAspect=True, row=0, col=0,
-                                      invertY=True)
+        self.p0 = self.win.addViewBox(
+            name="plot1", lockAspect=True, row=0, col=0, invertY=True
+        )
         self.img0 = pg.ImageItem()
         self.p0.addItem(self.img0)
 
@@ -198,8 +225,11 @@ class ROIDraw(QMainWindow):
 
         # view buttons
         self.views = [
-            "W: mean img", "E: mean img (enhanced)", "R: correlation map",
-            "T: max projection"
+            "Y: mean img",
+            "E: mean img (enhanced)",
+            "R: correlation map",
+            "T: max projection",
+            "U: mean img chan2",
         ]
         b = 0
         self.viewbtns = QButtonGroup(self)
@@ -232,9 +262,11 @@ class ROIDraw(QMainWindow):
 
     def check_proc(self, event):
         cproc = QMessageBox.question(
-            self, "PROC",
+            self,
+            "PROC",
             "Would you like to save traces before closing? (if you havent extracted the traces, click Cancel and extract!)",
-            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+        )
         if cproc == QMessageBox.Yes:
             self.close_GUI()
         elif cproc == QMessageBox.Cancel:
@@ -256,7 +288,8 @@ class ROIDraw(QMainWindow):
         np.save(os.path.join(self.parent.basename, "stat.npy"), stat_all)
         iscell_prob = np.concatenate(
             (self.parent.iscell[:, np.newaxis], self.parent.probcell[:, np.newaxis]),
-            axis=1)
+            axis=1,
+        )
 
         new_iscell = np.ones((self.nROIs, 2))
         new_iscell = np.concatenate((new_iscell, iscell_prob), axis=0)
@@ -285,8 +318,13 @@ class ROIDraw(QMainWindow):
             np.save(os.path.join(self.parent.basename, "Fneu_chan2.npy"), Fneu_chan2)
             np.save(os.path.join(self.parent.basename, "redcell.npy"), new_redcell)
 
-        print(np.shape(Fcell), np.shape(Fneu), np.shape(Spks), np.shape(new_iscell),
-              np.shape(stat_all))
+        print(
+            np.shape(Fcell),
+            np.shape(Fneu),
+            np.shape(Spks),
+            np.shape(new_iscell),
+            np.shape(stat_all),
+        )
 
         # close GUI
         io.load_proc(self.parent)
@@ -295,35 +333,52 @@ class ROIDraw(QMainWindow):
 
     def normalize_img_add_masks(self):
         masked_image = np.zeros(
-            ((self.Ly, self.Lx, 3, 4)))  # 3 for RGB and 4 for buttons
-        for i in np.arange(4):  # 4 because 4 buttons
+            ((self.Ly, self.Lx, 3, 5))
+        )  # 3 for RGB and 5 for buttons
+        for i in np.arange(5):  # 5 because 5 buttons
             if i == 0:
                 mimg = np.zeros((self.Ly, self.Lx), np.float32)
-                mimg[self.parent.ops["yrange"][0]:self.parent.ops["yrange"][1],
-                     self.parent.ops["xrange"][0]:self.parent.
-                     ops["xrange"][1]] = self.parent.ops["meanImg"][
-                         self.parent.ops["yrange"][0]:self.parent.ops["yrange"][1],
-                         self.parent.ops["xrange"][0]:self.parent.ops["xrange"][1]]
+                mimg[
+                    self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                    self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                ] = self.parent.ops["meanImg"][
+                    self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                    self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                ]
 
             elif i == 1:
                 mimg = np.zeros((self.Ly, self.Lx), np.float32)
-                mimg[self.parent.ops["yrange"][0]:self.parent.ops["yrange"][1],
-                     self.parent.ops["xrange"][0]:self.parent.
-                     ops["xrange"][1]] = self.parent.ops["meanImgE"][
-                         self.parent.ops["yrange"][0]:self.parent.ops["yrange"][1],
-                         self.parent.ops["xrange"][0]:self.parent.ops["xrange"][1]]
+                mimg[
+                    self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                    self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                ] = self.parent.ops["meanImgE"][
+                    self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                    self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                ]
             elif i == 2:
                 mimg = np.zeros((self.Ly, self.Lx), np.float32)
-                mimg[self.parent.ops["yrange"][0]:self.parent.ops["yrange"][1],
-                     self.parent.ops["xrange"][0]:self.parent.
-                     ops["xrange"][1]] = self.parent.ops["Vcorr"]
+                mimg[
+                    self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                    self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                ] = self.parent.ops["Vcorr"]
 
-            else:
+            elif i == 3:
                 mimg = np.zeros((self.Ly, self.Lx), np.float32)
                 if "max_proj" in self.parent.ops:
-                    mimg[self.parent.ops["yrange"][0]:self.parent.ops["yrange"][1],
-                         self.parent.ops["xrange"][0]:self.parent.
-                         ops["xrange"][1]] = self.parent.ops["max_proj"]
+                    mimg[
+                        self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                        self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                    ] = self.parent.ops["max_proj"]
+            else:
+                mimg = np.zeros((self.Ly, self.Lx), np.float32)
+                if "meanImg_chan2" in self.parent.ops:
+                    mimg[
+                        self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                        self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                    ] = self.parent.ops["meanImg_chan2"][
+                        self.parent.ops["yrange"][0] : self.parent.ops["yrange"][1],
+                        self.parent.ops["xrange"][0] : self.parent.ops["xrange"][1],
+                    ]
 
             mimg1 = np.percentile(mimg, 1)
             mimg99 = np.percentile(mimg, 99)
@@ -347,7 +402,8 @@ class ROIDraw(QMainWindow):
 
         pix = np.concatenate(
             ((H[:, :, np.newaxis]), S[:, :, np.newaxis], mean_img[:, :, np.newaxis]),
-            axis=-1)
+            axis=-1,
+        )
         pix = hsv_to_rgb(pix)
         return pix
 
@@ -360,11 +416,13 @@ class ROIDraw(QMainWindow):
                 # print(self.ineuron)
 
     def keyPressEvent(self, event):
-        if event.modifiers() != QtCore.Qt.AltModifier and event.modifiers(
-        ) != QtCore.Qt.ShiftModifier:
+        if (
+            event.modifiers() != QtCore.Qt.AltModifier
+            and event.modifiers() != QtCore.Qt.ShiftModifier
+        ):
             if event.key() == QtCore.Qt.Key_D:
                 self.ROIs[self.iROI].remove(self)
-            elif event.key() == QtCore.Qt.Key_W:
+            elif event.key() == QtCore.Qt.Key_Y:
                 self.viewbtns.button(0).setChecked(True)
                 self.viewbtns.button(0).press(self, 0)
             elif event.key() == QtCore.Qt.Key_E:
@@ -376,12 +434,16 @@ class ROIDraw(QMainWindow):
             elif event.key() == QtCore.Qt.Key_T:
                 self.viewbtns.button(3).setChecked(True)
                 self.viewbtns.button(3).press(self, 3)
+            elif event.key() == QtCore.Qt.Key_U:
+                self.viewbtns.button(4).setChecked(True)
+                self.viewbtns.button(4).press(self, 4)
 
     def add_ROI(self, pos=None):
         self.iROI = len(self.ROIs)
         self.nROIs = len(self.ROIs)
         self.ROIs.append(
-            sROI(iROI=self.nROIs, parent=self, pos=pos, diameter=int(self.diam.text())))
+            sROI(iROI=self.nROIs, parent=self, pos=pos, diameter=int(self.diam.text()))
+        )
         self.ROIs[-1].position(self)
         self.nROIs += 1
         print("%d cells added to manual GUI" % self.nROIs)
@@ -395,11 +457,16 @@ class ROIDraw(QMainWindow):
                 posy = pos.x()
                 posx = pos.y()
                 if event.modifiers() == QtCore.Qt.AltModifier:
-                    self.add_ROI(pos=np.array([
-                        posx - 5, posy - 5,
-                        int(self.diam.text()),
-                        int(self.diam.text())
-                    ]))
+                    self.add_ROI(
+                        pos=np.array(
+                            [
+                                posx - 5,
+                                posy - 5,
+                                int(self.diam.text()),
+                                int(self.diam.text()),
+                            ]
+                        )
+                    )
                 if event.double():
                     self.p0.setXRange(0, self.Lx)
                     self.p0.setYRange(0, self.Ly)
@@ -425,25 +492,24 @@ class ROIDraw(QMainWindow):
             ypix = y[ellipse].flatten()
             xpix = x[ellipse].flatten()
             lam = np.ones(ypix.shape)
-            stat0.append({
-                "ypix": ypix,
-                "xpix": xpix,
-                "lam": lam,
-                "npix": ypix.size,
-                "med": med
-            })
+            stat0.append(
+                {"ypix": ypix, "xpix": xpix, "lam": lam, "npix": ypix.size, "med": med}
+            )
             self.tlabel.append(pg.TextItem(str(n), self.ROIs[n].color, anchor=(0, 0)))
             self.tlabel[-1].setPos(xpix.mean(), ypix.mean())
             self.p0.addItem(self.tlabel[-1])
             self.scatter.append(
-                pg.ScatterPlotItem([xpix.mean()], [ypix.mean()], pen=self.ROIs[n].color,
-                                   symbol="+"))
+                pg.ScatterPlotItem(
+                    [xpix.mean()], [ypix.mean()], pen=self.ROIs[n].color, symbol="+"
+                )
+            )
             self.p0.addItem(self.scatter[-1])
         if not os.path.isfile(self.parent.ops["reg_file"]):
             self.parent.ops["reg_file"] = os.path.join(self.parent.basename, "data.bin")
 
         F, Fneu, F_chan2, Fneu_chan2, spks, ops, stat = masks_and_traces(
-            self.parent.ops, stat0, self.parent.stat)
+            self.parent.ops, stat0, self.parent.stat
+        )
         self.Fcell = F
         self.Fneu = Fneu
         self.F_chan2 = F_chan2
@@ -483,10 +549,17 @@ class ROIDraw(QMainWindow):
         # self.p1.setYRange(self.fmin, self.fmax)
 
 
-class sROI():
-
-    def __init__(self, iROI, parent=None, pos=None, diameter=None, color=None,
-                 yrange=None, xrange=None):
+class sROI:
+    def __init__(
+        self,
+        iROI,
+        parent=None,
+        pos=None,
+        diameter=None,
+        color=None,
+        yrange=None,
+        xrange=None,
+    ):
         # what type of ROI it is
 
         self.iROI = iROI
@@ -528,7 +601,7 @@ class sROI():
         self.ROI = pg.EllipseROI([imx, imy], [dx, dy], pen=roipen, removable=True)
         self.ROI.handleSize = 8
         self.ROI.handlePen = roipen
-        self.ROI.addScaleHandle([1, 0.5], [0., 0.5])
+        self.ROI.addScaleHandle([1, 0.5], [0.0, 0.5])
         self.ROI.addScaleHandle([0.5, 0], [0.5, 1])
         self.ROI.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
         self.med = [imy, imx]
@@ -559,8 +632,10 @@ class sROI():
         br = self.ROI.boundingRect()
         ellipse = np.zeros((yrange.size, xrange.size), "bool")
         x, y = np.meshgrid(np.arange(0, xrange.size, 1), np.arange(0, yrange.size, 1))
-        ellipse = ((y - br.center().y())**2 / (br.height() / 2)**2 +
-                   (x - br.center().x())**2 / (br.width() / 2)**2) <= 1
+        ellipse = (
+            (y - br.center().y()) ** 2 / (br.height() / 2) ** 2
+            + (x - br.center().x()) ** 2 / (br.width() / 2) ** 2
+        ) <= 1
 
         ellipse = ellipse[:, np.logical_and(xrange >= 0, xrange < parent.Lx)]
         xrange = xrange[np.logical_and(xrange >= 0, xrange < parent.Lx)]

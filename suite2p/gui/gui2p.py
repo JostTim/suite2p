@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
         # ------ CELL STATS / ROI SELECTION --------
         # which stats
         self.stats_to_show = [
-            "med", "npix", "skew", "compact", "footprint", "aspect_ratio"
+            "med", "npix", "skew", "compact", "footprint", "aspect_ratio" , "iscell", "redcell"
         ]
         lilfont = QtGui.QFont("Arial", 8)
         qlabel = QLabel(self)
@@ -297,110 +297,121 @@ class MainWindow(QMainWindow):
         #self.win.scene().sigMouseClicked.connect(self.plot_clicked)
 
     def keyPressEvent(self, event):
-        if self.loaded:
-            if event.modifiers() != QtCore.Qt.ControlModifier and event.modifiers(
-            ) != QtCore.Qt.ShiftModifier:
-                if event.key() == QtCore.Qt.Key_Return:
-                    if event.modifiers() == QtCore.Qt.AltModifier:
-                        if len(self.imerge) > 1:
-                            merge.do_merge(self)
-                elif event.key() == QtCore.Qt.Key_Escape:
-                    self.zoom_plot(1)
-                    self.zoom_plot(3)
-                    self.show()
-                elif event.key() == QtCore.Qt.Key_Delete:
-                    self.ROI_remove()
-                elif event.key() == QtCore.Qt.Key_Q:
-                    self.viewbtns.button(0).setChecked(True)
-                    self.viewbtns.button(0).press(self, 0)
-                elif event.key() == QtCore.Qt.Key_W:
-                    self.viewbtns.button(1).setChecked(True)
-                    self.viewbtns.button(1).press(self, 1)
-                elif event.key() == QtCore.Qt.Key_E:
-                    self.viewbtns.button(2).setChecked(True)
-                    self.viewbtns.button(2).press(self, 2)
-                elif event.key() == QtCore.Qt.Key_R:
-                    self.viewbtns.button(3).setChecked(True)
-                    self.viewbtns.button(3).press(self, 3)
-                elif event.key() == QtCore.Qt.Key_T:
-                    self.viewbtns.button(4).setChecked(True)
-                    self.viewbtns.button(4).press(self, 4)
-                elif event.key() == QtCore.Qt.Key_U:
-                    if "meanImg_chan2" in self.ops:
-                        self.viewbtns.button(6).setChecked(True)
-                        self.viewbtns.button(6).press(self, 6)
-                elif event.key() == QtCore.Qt.Key_Y:
-                    if "meanImg_chan2_corrected" in self.ops:
-                        self.viewbtns.button(5).setChecked(True)
-                        self.viewbtns.button(5).press(self, 5)
-                elif event.key() == QtCore.Qt.Key_Space:
-                    self.checkBox.toggle()
-                #Agus
-                elif event.key() == QtCore.Qt.Key_N:
-                    self.checkBoxd.toggle()
-                elif event.key() == QtCore.Qt.Key_B:
-                    self.checkBoxn.toggle()
-                elif event.key() == QtCore.Qt.Key_V:
-                    self.checkBoxt.toggle()
-                #
-                elif event.key() == QtCore.Qt.Key_A:
-                    self.colorbtns.button(0).setChecked(True)
-                    self.colorbtns.button(0).press(self, 0)
-                elif event.key() == QtCore.Qt.Key_S:
-                    self.colorbtns.button(1).setChecked(True)
-                    self.colorbtns.button(1).press(self, 1)
-                elif event.key() == QtCore.Qt.Key_D:
-                    self.colorbtns.button(2).setChecked(True)
-                    self.colorbtns.button(2).press(self, 2)
-                elif event.key() == QtCore.Qt.Key_F:
-                    self.colorbtns.button(3).setChecked(True)
-                    self.colorbtns.button(3).press(self, 3)
-                elif event.key() == QtCore.Qt.Key_G:
-                    self.colorbtns.button(4).setChecked(True)
-                    self.colorbtns.button(4).press(self, 4)
-                elif event.key() == QtCore.Qt.Key_H:
-                    if self.hasred:
-                        self.colorbtns.button(5).setChecked(True)
-                        self.colorbtns.button(5).press(self, 5)
-                elif event.key() == QtCore.Qt.Key_J:
-                    self.colorbtns.button(6).setChecked(True)
-                    self.colorbtns.button(6).press(self, 6)
-                elif event.key() == QtCore.Qt.Key_K:
-                    self.colorbtns.button(7).setChecked(True)
-                    self.colorbtns.button(7).press(self, 7)
-                elif event.key() == QtCore.Qt.Key_L:
-                    if self.bloaded:
-                        self.colorbtns.button(8).setChecked(True)
-                        self.colorbtns.button(8).press(self, 8)
-                elif event.key() == QtCore.Qt.Key_M:
-                    if self.rastermap:
-                        self.colorbtns.button(9).setChecked(True)
-                        self.colorbtns.button(9).press(self, 9)
-                elif event.key() == QtCore.Qt.Key_Left:
-                    ctype = self.iscell[self.ichosen]
-                    while -1:
-                        self.ichosen = (self.ichosen - 1) % len(self.stat)
-                        if self.iscell[self.ichosen] is ctype:
-                            break
-                    self.imerge = [self.ichosen]
-                    self.ROI_remove()
-                    self.update_plot()
+        if not self.loaded:
+            return
+        
+        if event.modifiers() != QtCore.Qt.ControlModifier and event.modifiers(
+        ) != QtCore.Qt.ShiftModifier:
+            if event.key() == QtCore.Qt.Key_Return:
+                if event.modifiers() == QtCore.Qt.AltModifier:
+                    if len(self.imerge) > 1:
+                        merge.do_merge(self)
+            elif event.key() == QtCore.Qt.Key_Escape:
+                self.zoom_plot(1)
+                self.zoom_plot(3)
+                self.show()
+            elif event.key() == QtCore.Qt.Key_Delete:
+                self.ROI_remove()
+            elif event.key() == QtCore.Qt.Key_Q:
+                self.viewbtns.button(0).setChecked(True)
+                self.viewbtns.button(0).press(self, 0)
+            elif event.key() == QtCore.Qt.Key_Y:
+                self.viewbtns.button(1).setChecked(True)
+                self.viewbtns.button(1).press(self, 1)
+            elif event.key() == QtCore.Qt.Key_E:
+                self.viewbtns.button(2).setChecked(True)
+                self.viewbtns.button(2).press(self, 2)
+            elif event.key() == QtCore.Qt.Key_R:
+                self.viewbtns.button(3).setChecked(True)
+                self.viewbtns.button(3).press(self, 3)
+            elif event.key() == QtCore.Qt.Key_T:
+                self.viewbtns.button(4).setChecked(True)
+                self.viewbtns.button(4).press(self, 4)
+            elif event.key() == QtCore.Qt.Key_U:
+                if "meanImg_chan2" in self.ops:
+                    self.viewbtns.button(6).setChecked(True)
+                    self.viewbtns.button(6).press(self, 6)
+            elif event.key() == QtCore.Qt.Key_W:
+                if "meanImg_chan2_corrected" in self.ops:
+                    self.viewbtns.button(5).setChecked(True)
+                    self.viewbtns.button(5).press(self, 5)
+            elif event.key() == QtCore.Qt.Key_Space:
+                self.checkBox.toggle()
+            #Agus
+            elif event.key() == QtCore.Qt.Key_N:
+                self.checkBoxd.toggle()
+            elif event.key() == QtCore.Qt.Key_B:
+                self.checkBoxn.toggle()
+            elif event.key() == QtCore.Qt.Key_V:
+                self.checkBoxt.toggle()
+            #
+            elif event.key() == QtCore.Qt.Key_A:
+                self.colorbtns.button(0).setChecked(True)
+                self.colorbtns.button(0).press(self, 0)
+            elif event.key() == QtCore.Qt.Key_S:
+                self.colorbtns.button(1).setChecked(True)
+                self.colorbtns.button(1).press(self, 1)
+            elif event.key() == QtCore.Qt.Key_D:
+                self.colorbtns.button(2).setChecked(True)
+                self.colorbtns.button(2).press(self, 2)
+            elif event.key() == QtCore.Qt.Key_F:
+                self.colorbtns.button(3).setChecked(True)
+                self.colorbtns.button(3).press(self, 3)
+            elif event.key() == QtCore.Qt.Key_G:
+                self.colorbtns.button(4).setChecked(True)
+                self.colorbtns.button(4).press(self, 4)
+            elif event.key() == QtCore.Qt.Key_H:
+                if self.hasred:
+                    self.colorbtns.button(5).setChecked(True)
+                    self.colorbtns.button(5).press(self, 5)
+            elif event.key() == QtCore.Qt.Key_J:
+                self.colorbtns.button(6).setChecked(True)
+                self.colorbtns.button(6).press(self, 6)
+            elif event.key() == QtCore.Qt.Key_K:
+                self.colorbtns.button(7).setChecked(True)
+                self.colorbtns.button(7).press(self, 7)
+            elif event.key() == QtCore.Qt.Key_L:
+                if self.bloaded:
+                    self.colorbtns.button(8).setChecked(True)
+                    self.colorbtns.button(8).press(self, 8)
+            elif event.key() == QtCore.Qt.Key_M:
+                if self.rastermap:
+                    self.colorbtns.button(9).setChecked(True)
+                    self.colorbtns.button(9).press(self, 9)
 
-                elif event.key() == QtCore.Qt.Key_Right:
-                    ##Agus
-                    self.ROI_remove()
-                    ctype = self.iscell[self.ichosen]
-                    while 1:
-                        self.ichosen = (self.ichosen + 1) % len(self.stat)
-                        if self.iscell[self.ichosen] is ctype:
-                            break
+            elif event.key() == QtCore.Qt.Key_I:
+                if self.hasred:
+                    self.redcell[self.ichosen] = ~self.redcell[self.ichosen]
                     self.imerge = [self.ichosen]
-                    self.update_plot()
-                    self.show()
+                    masks.change_red(self)
+                    self.ichosen_stats()
+                    print(f'Switched cell {self.ichosen} red status to {self.redcell[self.ichosen]}')
+
+            elif event.key() == QtCore.Qt.Key_Left:
+                ctype = self.iscell[self.ichosen]
+                while -1:
+                    self.ichosen = (self.ichosen - 1) % len(self.stat)
+                    if self.iscell[self.ichosen] is ctype:
+                        break
+                self.imerge = [self.ichosen]
+                self.ROI_remove()
+                self.update_plot()
+
+            elif event.key() == QtCore.Qt.Key_Right:
                 ##Agus
-                elif event.key() == QtCore.Qt.Key_Up:
-                    masks.flip_plot(self)
-                    self.ROI_remove()
+                self.ROI_remove()
+                ctype = self.iscell[self.ichosen]
+                while 1:
+                    self.ichosen = (self.ichosen + 1) % len(self.stat)
+                    if self.iscell[self.ichosen] is ctype:
+                        break
+                self.imerge = [self.ichosen]
+                self.update_plot()
+                self.show()
+            ##Agus
+            elif event.key() == QtCore.Qt.Key_Up:
+                masks.flip_plot(self)
+                self.ROI_remove()
 
     def update_plot(self):
         if self.ops_plot["color"] == 7:
@@ -656,13 +667,19 @@ class MainWindow(QMainWindow):
         self.ROIedit.setText(str(self.ichosen))
         for k in range(1, len(self.stats_to_show) + 1):
             key = self.stats_to_show[k - 1]
-            ival = self.stat[n][key]
-            if k == 1:
-                self.ROIstats[k].setText(key + ": [%d, %d]" % (ival[0], ival[1]))
-            elif k == 2:
-                self.ROIstats[k].setText(key + ": %d" % (ival))
-            else:
-                self.ROIstats[k].setText(key + ": %2.2f" % (ival))
+            try :
+                ival = self.stat[n][key]
+            except KeyError:
+                try :
+                    ival = eval(f"self.{key}[n]")
+                except AttributeError:
+                    continue #if the key was redcell and we don't have two channels, for example
+
+            if hasattr(ival, "__iter__"):
+                value_string = "[" +  ', '.join([ f"{value}" if isinstance(value,(int,np.integer)) else f"{value: 2.2f}" for value in ival]) + "]"
+            else : 
+                value_string = f"{ival}" if isinstance(ival,(int,np.integer)) else f"{ival: 2.2f}"
+            self.ROIstats[k].setText(f"{key} : {value_string}")
 
     def zoom_to_cell(self):
         irange = 0.1 * np.array([self.Ly, self.Lx]).max()

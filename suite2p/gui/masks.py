@@ -17,7 +17,7 @@ def make_buttons(parent, b0):
     """ color buttons at row b0 """
     # color buttons
     parent.color_names = [
-        "A: random", "S: skew", "D: compact", "F: footprint", "G: aspect_ratio",
+        "A: random", "S: skew", "D: compact", "F: footprint", "G: ²²²aspect_ratio",
         "H: chan2_prob", "J: classifier, cell prob=", "K: correlations, bin=",
         "L: corr with 1D var, bin=^^^", "M: rastermap / custom"
     ]
@@ -56,6 +56,7 @@ def make_buttons(parent, b0):
         btn.setEnabled(False)
         parent.color_names[b] = parent.color_names[b][3:]
         b += 1
+
     parent.chan2edit = QLineEdit(parent)
     parent.chan2edit.setText("0.6")
     parent.chan2edit.setFixedWidth(iwid)
@@ -80,7 +81,6 @@ def make_buttons(parent, b0):
     parent.l0.addWidget(parent.binedit, nv + b - 2, 1, 1, 1)
     b0 = nv + b + 2
     return b0
-
 
 def cmap_change(parent):
     index = parent.CmapChooser.currentIndex()
@@ -176,6 +176,21 @@ def flip_plot(parent):
             raise FileNotFoundError("Unable to find `iscell.npy` file")
 
     io.save_iscell(parent)
+
+
+def change_red(parent):
+    # for n in parent.imerge:
+    #     isred = int(parent.redcell[n])
+    chan2_masks(parent)
+    parent.update_plot()
+    # Check if `redcell.npy` file exists
+    if not Path(parent.basename).joinpath("redcell.npy").exists():
+        # Try the `plane0` folder in case of NWB file loaded
+        if Path(parent.basename).joinpath("plane0", "redcell.npy").exists():
+            parent.basename = str(Path(parent.basename).joinpath("plane0"))
+        else:
+            raise FileNotFoundError("Unable to find `redcell.npy` file")
+    io.save_redcell(parent)
 
 
 def chan2_prob(parent):
