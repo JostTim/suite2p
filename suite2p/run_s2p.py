@@ -46,13 +46,13 @@ except ImportError:
 
 from functools import partial
 from pathlib import Path
+from logging import getLogger
 
 print = partial(print, flush=True)
 
-
 def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
              run_registration=True, ops=default_ops(), stat=None):
-    """ run suite2p processing on array or BinaryFile 
+    """run suite2p processing on array or BinaryFile
     
     f_reg: required, registered or unregistered frames
         n_frames x Ly x Lx
@@ -75,6 +75,8 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
     
     """
 
+    logger = getLogger("suite2p")
+
     plane_times = {}
     t1 = time.time()
 
@@ -83,13 +85,13 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
     builtin_classfile = classification.builtin_classfile
     user_classfile = classification.user_classfile
     if ops_classfile:
-        print(f"NOTE: applying classifier {str(ops_classfile)}")
+        logger.info(f"NOTE: applying classifier {str(ops_classfile)}")
         classfile = ops_classfile
     elif ops["use_builtin_classifier"] or not user_classfile.is_file():
-        print(f"NOTE: Applying builtin classifier at {str(builtin_classfile)}")
+        logger.info(f"NOTE: Applying builtin classifier at {str(builtin_classfile)}")
         classfile = builtin_classfile
     else:
-        print(f"NOTE: applying default {str(user_classfile)}")
+        logger.info(f"NOTE: applying default {str(user_classfile)}")
         classfile = user_classfile
 
     if run_registration:
@@ -100,7 +102,9 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
 
         ######### REGISTRATION #########
         t11 = time.time()
-        print("----------- REGISTRATION")
+        
+        logger = getLogger("suite2p.registration")
+        logger.info("Starting")
         refImg = ops["refImg"] if "refImg" in ops and ops.get("force_refImg",
                                                               False) else None
 
@@ -119,12 +123,13 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
             np.save(ops["ops_path"], ops)
 
         plane_times["registration"] = time.time() - t11
-        print("----------- Total %0.2f sec" % plane_times["registration"])
+        logger.info("Finished in %0.2f sec" % plane_times["registration"])
         n_frames, Ly, Lx = f_reg.shape
 
         if ops["two_step_registration"] and ops["keep_movie_raw"]:
-            print("----------- REGISTRATION STEP 2")
-            print("(making mean image (excluding bad frames)")
+            logger = getLogger("suite2p.registration_step2")
+            logger.info("Starting")
+            logger.info("(making mean image (excluding bad frames)")
             nsamps = min(n_frames, 1000)
             inds = np.linspace(0, n_frames, 1 + nsamps).astype(np.int64)[:-1]
             if align_by_chan2:
@@ -137,10 +142,12 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
             if ops.get("ops_path"):
                 np.save(ops["ops_path"], ops)
             plane_times["two_step_registration"] = time.time() - t11
-            print("----------- Total %0.2f sec" % plane_times["two_step_registration"])
+            logger.info("Finished in %0.2f sec" % plane_times["two_step_registration"])
 
         # compute metrics for registration
         if ops.get("do_regmetrics", True) and n_frames >= 1500:
+            logger = getLogger("suite2p.registration_metrics")
+            logger.info("Starting")
             t0 = time.time()
             # n frames to pick from full movie
             nsamp = min(2000 if n_frames < 5000 or Ly > 700 or Lx > 700 else 5000,
@@ -151,7 +158,7 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
                       ops["xrange"][0]:ops["xrange"][-1]]
             ops = registration.get_pc_metrics(mov, ops)
             plane_times["registration_metrics"] = time.time() - t0
-            print("Registration metrics, %0.2f sec." %
+            logger.info("Finished in, %0.2f sec." %
                   plane_times["registration_metrics"])
             if ops.get("ops_path"):
                 np.save(ops["ops_path"], ops)
@@ -160,16 +167,22 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
         n_frames, Ly, Lx = f_reg.shape
         ######## CELL DETECTION ##############
         t11 = time.time()
-        print("----------- ROI DETECTION")
+
+        logger = getLogger("suite2p.roi_detection")
+
+        logger.info("----------- Starting")
         if stat is None:
             ops, stat = detection.detection_wrapper(f_reg, ops=ops, classfile=classfile)
         plane_times["detection"] = time.time() - t11
-        print("----------- Total %0.2f sec." % plane_times["detection"])
-
-        if len(stat) > 0:
+        logger.info("----------- Finished in %0.2f sec." % plane_times["detection"])
+        
+        if len(stat) == 0:
+            logger.warning("no ROIs found, only ops.npy file saved")
+        else :
             ######## ROI EXTRACTION ##############
             t11 = time.time()
-            print("----------- EXTRACTION")
+            logger = getLogger("suite2p.extraction")
+            logger.info("----------- Starting")
             stat, F, Fneu, F_chan2, Fneu_chan2 = extraction.extraction_wrapper(
                 stat, f_reg, f_reg_chan2=f_reg_chan2, ops=ops)
             # save results
@@ -177,22 +190,25 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
                 np.save(ops["ops_path"], ops)
 
             plane_times["extraction"] = time.time() - t11
-            print("----------- Total %0.2f sec." % plane_times["extraction"])
+            logger.info("----------- Finished in %0.2f sec." % plane_times["extraction"])
 
             ######## ROI CLASSIFICATION ##############
             t11 = time.time()
-            print("----------- CLASSIFICATION")
+            logger = getLogger("suite2p.classification")
+            logger.info("----------- Starting")
             if len(stat):
                 iscell = classification.classify(stat=stat, classfile=classfile)
             else:
                 iscell = np.zeros((0, 2))
             plane_times["classification"] = time.time() - t11
+            logger.info("----------- Finished in %0.2f sec." % plane_times["classification"])
 
             ######### SPIKE DECONVOLUTION ###############
             fpath = ops["save_path"]
+            logger = getLogger("suite2p.spike_deconvolution")
             if ops.get("spikedetect", True):
                 t11 = time.time()
-                print("----------- SPIKE DECONVOLUTION")
+                logger.info("----------- Starting")
                 dF = F.copy() - ops["neucoeff"] * Fneu
                 dF = extraction.preprocess(F=dF, baseline=ops["baseline"],
                                            win_baseline=ops["win_baseline"],
@@ -202,9 +218,9 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
                 spks = extraction.oasis(F=dF, batch_size=ops["batch_size"],
                                         tau=ops["tau"], fs=ops["fs"])
                 plane_times["deconvolution"] = time.time() - t11
-                print("----------- Total %0.2f sec." % plane_times["deconvolution"])
+                logger.info("----------- Total %0.2f sec." % plane_times["deconvolution"])
             else:
-                print("WARNING: skipping spike detection (ops['spikedetect']=False)")
+                logger.warning("Skipping spike detection (ops['spikedetect']=False)")
                 spks = np.zeros_like(F)
 
             if ops.get("save_path"):
@@ -228,10 +244,9 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
                     ops["save_path"], "redcell.npy")) if ops["nchannels"] == 2 else []
                 io.save_mat(ops, stat, F, Fneu, spks, iscell, redcell,
                             F_chan2, Fneu_chan2)
-        else:
-            print("no ROIs found, only ops.npy file saved")
     else:
-        print("WARNING: skipping cell detection (ops['roidetect']=False)")
+        logger = getLogger("suite2p.roi_detection")
+        logger.warning("Skipping cell detection (ops['roidetect']=False)")
     ops["timing"] = plane_times.copy()
     plane_runtime = time.time() - t1
     ops["timing"]["total_plane_runtime"] = plane_runtime
@@ -262,7 +277,7 @@ def run_plane(ops, ops_path=None, stat=None):
 
     ops = {**default_ops(), **ops}
     ops["date_proc"] = datetime.now().astimezone()
-
+    logger = getLogger("suite2p.plane")
     # for running on server or on moved files, specify ops_path
     if ops_path is not None:
         ops["save_path"] = os.path.split(ops_path)[0]
@@ -283,28 +298,25 @@ def run_plane(ops, ops_path=None, stat=None):
     if ops["nframes"] < 50:
         raise ValueError("the total number of frames should be at least 50.")
     if ops["nframes"] < 200:
-        print(
-            "WARNING: number of frames is below 200, unpredictable behaviors may occur."
-        )
+        logger.warning("Number of frames is below 200, unpredictable behaviors may occur.")
 
     # check if registration should be done
     if ops["do_registration"] > 0:
         if "refImg" not in ops or "yoff" not in ops or ops["do_registration"] > 1:
-            print(
-                "NOTE: not registered / registration forced with ops['do_registration']>1"
+            logger.info("NOTE: not registered / registration forced with ops['do_registration']>1"
             )
             try:
                 del ops["yoff"], ops["xoff"], ops["corrXY"]  # delete previous offsets
             except KeyError:
-                print("      (no previous offsets to delete)")
+                logger.error("      (no previous offsets to delete)")
             run_registration = True
         else:
-            print("NOTE: not running registration, plane already registered")
-            print("binary path: %s" % ops["reg_file"])
+            logger.info("NOTE: not running registration, plane already registered")
+            logger.info("binary path: %s" % ops["reg_file"])
             run_registration = False
     else:
-        print("NOTE: not running registration, ops['do_registration']=0")
-        print("binary path: %s" % ops["reg_file"])
+        logger.info("NOTE: not running registration, ops['do_registration']=0")
+        logger.info("binary path: %s" % ops["reg_file"])
         run_registration = False
 
     # get binary file paths
@@ -337,7 +349,7 @@ def run_plane(ops, ops_path=None, stat=None):
                        stat=stat)
 
     if ops.get("move_bin") and ops["save_path"] != ops["fast_disk"]:
-        print("moving binary files to save_path")
+        logger.info("moving binary files to save_path")
         shutil.move(ops["reg_file"], os.path.join(ops["save_path"], "data.bin"))
         if ops["nchannels"] > 1:
             shutil.move(ops["reg_file_chan2"],
@@ -348,7 +360,7 @@ def run_plane(ops, ops_path=None, stat=None):
                 shutil.move(ops["raw_file_chan2"],
                             os.path.join(ops["save_path"], "data_chan2_raw.bin"))
     elif ops.get("delete_bin"):
-        print("deleting binary files")
+        logger.info("deleting binary files")
         os.remove(ops["reg_file"])
         if ops["nchannels"] > 1:
             os.remove(ops["reg_file_chan2"])
@@ -380,12 +392,13 @@ def run_s2p(ops={}, db={}, server={}):
                 ops settings used to run suite2p
 
     """
+    logger = getLogger("suite2p")
     t0 = time.time()
     ops = {**default_ops(), **ops, **db}
     if isinstance(ops["diameter"], list) and len(
             ops["diameter"]) > 1 and ops["aspect"] == 1.0:
         ops["aspect"] = ops["diameter"][0] / ops["diameter"][1]
-    print(db)
+    logger.debug(db)
     if "save_path0" not in ops or len(ops["save_path0"]) == 0:
         if ops.get("h5py"):
             ops["save_path0"] = os.path.split(
@@ -415,8 +428,8 @@ def run_s2p(ops={}, db={}, server={}):
         files_found_flag = False
 
     if files_found_flag:
-        print(f"FOUND BINARIES AND OPS IN {ops_paths}")
-        print("removing previous detection and extraction files, if present")
+        logger.info(f"FOUND BINARIES AND OPS IN {ops_paths}")
+        logger.info("removing previous detection and extraction files, if present")
         files_to_remove = [
             "stat.npy", "F.npy", "Fneu.npy", "F_chan2.npy", "Fneu_chan2.npy",
             "iscell.npy", "redcell.npy"
@@ -481,7 +494,7 @@ def run_s2p(ops={}, db={}, server={}):
             if f.is_dir() and f.name[:5] == "plane"
         ])
         ops_paths = [os.path.join(f, "ops.npy") for f in plane_folders]
-        print("time {:0.2f} sec. Wrote {} frames per binary for {} planes".format(
+        logger.info("time {:0.2f} sec. Wrote {} frames per binary for {} planes".format(
             time.time() - t0, ops0["nframes"], len(plane_folders)))
 
     if ops.get("multiplane_parallel"):
@@ -504,7 +517,7 @@ def run_s2p(ops={}, db={}, server={}):
     else:
         for ipl, ops_path in enumerate(ops_paths):
             if ipl in ops["ignore_flyback"]:
-                print(">>>> skipping flyback PLANE", ipl)
+                logger.info("Skipping flyback PLANE", ipl)
                 continue
             op = np.load(ops_path, allow_pickle=True).item()
 
@@ -517,22 +530,22 @@ def run_s2p(ops={}, db={}, server={}):
                     if key in ops:
                         op[key] = ops[key]
 
-            print(">>>>>>>>>>>>>>>>>>>>> PLANE %d <<<<<<<<<<<<<<<<<<<<<<" % ipl)
+            logger.info("Starting processing plane : %d" % ipl)
             op = run_plane(op, ops_path=ops_path)
-            print("Plane %d processed in %0.2f sec (can open in GUI)." %
+            logger.info("Plane %d processed in %0.2f sec (can open in GUI)." %
                   (ipl, op["timing"]["total_plane_runtime"]))
         run_time = time.time() - t0
-        print("total = %0.2f sec." % run_time)
+        logger.info("total = %0.2f sec." % run_time)
 
         #### COMBINE PLANES or FIELDS OF VIEW ####
         if len(ops_paths) > 1 and ops["combined"] and ops.get("roidetect", True):
-            print("Creating combined view")
+            logger.info("Creating combined view")
             io.combined(save_folder, save=True)
 
         # save to NWB
         if ops.get("save_NWB"):
-            print("Saving in nwb format")
+            logger.info("Saving in nwb format")
             io.save_nwb(save_folder)
 
-        print("TOTAL RUNTIME %0.2f sec" % (time.time() - t0))
+        logger.info("TOTAL RUNTIME %0.2f sec" % (time.time() - t0))
         return op
