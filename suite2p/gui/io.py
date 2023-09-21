@@ -337,9 +337,13 @@ def load_to_GUI(parent, basename, procs):
         if "imerge" not in parent.stat[n]:
             parent.stat[n]["imerge"] = []
 
-
 def load_behavior(parent):
-    name = QFileDialog.getOpenFileName(parent, "Open *.npy", filter="*.npy")
+    try :
+        selected_path = os.path.split(parent.fname)[0]
+    except :
+        selected_path = None
+
+    name = QFileDialog.getOpenFileName(parent, "Open *.npy", selected_path ,filter="*.npy")
     name = name[0]
     bloaded = False
     try:
