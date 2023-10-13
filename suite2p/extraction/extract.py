@@ -201,6 +201,8 @@ def extraction_wrapper(stat, f_reg, f_reg_chan2=None, cell_masks=None,
     else:
         F_chan2, Fneu_chan2 = [], []
 
+    ##TODO : ADD MONKEY PATCH OR EXTRA FUNCTION HERE TO CALCULATE neucoeff of the neuron
+
     # subtract neuropil
     dF = F - ops["neucoeff"] * Fneu
 
