@@ -127,9 +127,16 @@ def extract_traces(f_in, cell_masks, neuropil_masks, batch_size=500):
 def matmul_traces(Fi, data, cell_ipix, cell_lam):
     ncells = Fi.shape[0]
     for n in prange(ncells):
-        data_int = data[:, cell_ipix[n]].astype("int64")  # Convert to int64
-        cell_lam_int = cell_lam[n].astype("int64")  # Convert to int64
-        Fi[n] = np.dot(data_int, cell_lam_int)
+        # the commented core here doesn't work with numba, because np.dot is not implemented for this int types
+        # data_int = data[:, cell_ipix[n]].astype("int64")  # Convert to int64
+        # cell_lam_int = cell_lam[n].astype("int64")  # Convert to int64
+        # Fi[n] = np.dot(data_int, cell_lam_int)
+        # An alternative could be :
+        # Fi[n] = np.matmul(data_int, cell_lam_int)
+        # but this would need to be checked
+
+        # the problem with dot here is that it raises warnings
+        Fi[n] = np.dot(data[:, cell_ipix[n]], cell_lam[n])
     return Fi
 
 
