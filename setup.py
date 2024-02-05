@@ -25,7 +25,9 @@ io_deps = [
     "paramiko",
     "nd2",
     "sbxreader",
-    "h5py"
+    "h5py",
+    "opencv-python-headless",
+    "xmltodict"
 ]
 
 nwb_deps = [
