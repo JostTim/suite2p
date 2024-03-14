@@ -68,3 +68,4 @@ Temporary Items
 
 # data
 data/test_data
+*.egg-info*
