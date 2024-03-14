@@ -87,5 +87,5 @@ jobs:
           pip install -U setuptools setuptools_scm wheel twine
       - name: Build and publish
         run: |
-          python -m build
+          python setup.py sdist bdist_wheel
           python -m twine upload --repository pypi dist/*
