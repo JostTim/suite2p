@@ -5,7 +5,6 @@ install_deps = [
     "natsort",
     "rastermap>=0.9.0",
     "tifffile",
-    "torch>=1.13.1",
     "numpy>=1.24.3",
     "numba>=0.57.0",
     "matplotlib",
@@ -37,61 +36,22 @@ test_deps = [
 ]
 
 # check if pyqt/pyside already installed
-try:
-    import PyQt5
-
-    gui_deps.remove("pyqt6")
-    gui_deps.remove("pyqt6.sip")
-except Exception:
-    pass
-
-try:
-    import PySide2
-
-    gui_deps.remove("pyqt6")
-    gui_deps.remove("pyqt6.sip")
-except Exception:
-    pass
-
-try:
-    import PySide6
-
-    gui_deps.remove("pyqt6")
-    gui_deps.remove("pyqt6.sip")
-except Exception:
-    pass
-
 all_deps = gui_deps + nwb_deps + test_deps + io_deps
-
-try:
-    import torch
-
-    a = torch.ones(2, 3)
-    major_version, minor_version, _ = torch.__version__.split(".")
-    if major_version == "2" or int(minor_version) >= 6:
-        install_deps.remove("torch>=1.6")
-except Exception:
-    pass
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="suite2p-haisslab",
-    author="Marius Pachitariu and Carsen Stringer",
-    author_email="marius10p@gmail.com",
+    author="Marius Pachitariu, Carsen Stringer - Forked by Timothé Jost-Mousseau",
+    author_email="timothe.jost-mousseau@pasteur.fr",
     description="Pipeline for calcium imaging",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/MouseLand/suite2p",
+    url="https://github.com/JostTim/suite2p",
     packages=setuptools.find_packages(),
-    setup_requires=[
-        "pytest-runner",
-        "setuptools_scm",
-    ],
-    use_scm_version=True,
+    version="0.14.4",
     install_requires=install_deps,
-    tests_require=test_deps,
     extras_require={
         "docs": [
             "sphinx>=3.0",
