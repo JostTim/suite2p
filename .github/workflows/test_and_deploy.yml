@@ -1,8 +1,6 @@
 # This workflows will upload a Python Package using Twine when a release is created
 # For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
 
-name: ci_cd_s
-
 on: 
   push:
     branches:
@@ -30,4 +28,4 @@ jobs:
         run: |
           python -m pip install --upgrade build twine
           python -m build
-          python -m twine upload --repository pypi dist/*
+          python -m twine upload dist/*

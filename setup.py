@@ -1,4 +1,5 @@
 import setuptools
+from pathlib import Path
 
 install_deps = [
     "importlib-metadata",
@@ -41,6 +42,17 @@ all_deps = gui_deps + nwb_deps + test_deps + io_deps
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
+def get_version(rel_path):
+    here = Path(__file__).parent.absolute()
+    with open(here.joinpath(rel_path), "r") as fp:
+        for line in fp.read().splitlines():
+            if line.startswith("__version__"):
+                delim = '"' if '"' in line else "'"
+                return line.split(delim)[1]
+    raise RuntimeError("Unable to find version string.")
+
+
 setuptools.setup(
     name="suite2p-haisslab",
     author="Marius Pachitariu, Carsen Stringer - Forked by Timothé Jost-Mousseau",
@@ -50,7 +62,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/JostTim/suite2p",
     packages=setuptools.find_packages(),
-    version="0.14.4",
+    version=get_version(Path("treat2p", "__init__.py")),
     install_requires=install_deps,
     extras_require={
         "gui": gui_deps,
