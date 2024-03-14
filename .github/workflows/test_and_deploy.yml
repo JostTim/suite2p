@@ -21,10 +21,12 @@ jobs:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
     steps:
-      - uses: actions/checkout@v3
-      - uses: pdm-project/setup-pdm@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with :
+          python-version: "3.11"
       - name: Build and publish
         run: |
-          - pip install build twine
+          - python -m pip install build twine
           - python -m build
           - python -m twine upload --repository pypi dist/*

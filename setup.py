@@ -53,13 +53,6 @@ setuptools.setup(
     version="0.14.4",
     install_requires=install_deps,
     extras_require={
-        "docs": [
-            "sphinx>=3.0",
-            "sphinxcontrib-apidoc",
-            "sphinx_rtd_theme",
-            "sphinx-prompt",
-            "sphinx-autodoc-typehints",
-        ],
         "gui": gui_deps,
         "nwb": nwb_deps,
         "io": io_deps,
