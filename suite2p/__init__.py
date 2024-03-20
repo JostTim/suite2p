@@ -4,7 +4,6 @@ Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer a
 
 __version__ = "0.14.4"
 
-from .version import version
 from .default_ops import default_ops
 from .run_s2p import run_s2p, run_plane, pipeline
 from .detection import ROI, detection_wrapper
