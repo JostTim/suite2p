@@ -2,11 +2,12 @@
 Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
 """
 
-from .__init__ import __version__ as version
-
 
 def default_ops():
     """default options to run pipeline"""
+
+    from .__init__ import __version__ as version
+
     return {
         # Suite2p version
         "suite2p_version": version,  # current version of suite2p used for pipeline

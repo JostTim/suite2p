@@ -2,7 +2,7 @@
 Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
 """
 
-__version__ = "0.14.5"
+__version__ = "0.14.6"
 
 from .default_ops import default_ops
 from .run_s2p import run_s2p, run_plane, pipeline

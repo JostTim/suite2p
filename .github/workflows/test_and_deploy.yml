@@ -28,4 +28,4 @@ jobs:
         run: |
           python -m pip install --upgrade build twine
           python -m build
-          python -m twine upload dist/*
+          python -m twine upload --repository pypi dist/*
