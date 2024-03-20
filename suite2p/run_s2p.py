@@ -14,7 +14,9 @@ import numpy as np
 
 # from scipy.io import savemat
 
-from . import extraction, io, registration, detection, classification, default_ops
+from . import extraction, io, registration, detection, classification
+from .default_ops import default_ops
+
 
 try:
     import pynwb
@@ -58,7 +60,9 @@ from logging import getLogger
 print = partial(print, flush=True)
 
 
-def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None, run_registration=True, ops=None, stat=None):
+def pipeline(
+    f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None, run_registration=True, ops=default_ops(), stat=None
+):
     """run suite2p processing on array or BinaryFile
 
     f_reg: required, registered or unregistered frames
@@ -81,9 +85,6 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None, run_registra
     stat: optional, input predefined masks
 
     """
-
-    if ops is None:
-        ops = default_ops()
 
     logger = getLogger("suite2p")
 

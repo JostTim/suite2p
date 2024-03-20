@@ -17,6 +17,7 @@ install_deps = [
 
 gui_deps = [
     "qtpy",
+    "PyQt5",
     "pyqt6",
     "pyqt6.sip",
     "pyqtgraph",
@@ -62,7 +63,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/JostTim/suite2p",
     packages=setuptools.find_packages(),
-    version=get_version(Path("suite2p", "__init__.py")),
+    version=get_version(Path("suite2p", "version.py")),
     install_requires=install_deps,
     extras_require={
         "gui": gui_deps,
