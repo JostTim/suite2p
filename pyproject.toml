@@ -74,7 +74,7 @@ build-backend = "pdm.backend"
 
 [tool.pdm.version]
 source = "file"
-path = "suite2p/__init__.py"
+path = "suite2p/version.py"
 
 [tool.pdm]
 distribution = true
