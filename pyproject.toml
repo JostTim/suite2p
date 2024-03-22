@@ -1,0 +1,80 @@
+[project]
+name = "suite2p-haisslab"
+description = "Pipeline for calcium imaging"
+authors = [
+    { name = "Marius Pachitariu, Carsen Stringer", email = "timothe.jost-mousseau@pasteur.fr" },
+    { name = "Timothe Jost-Mousseau", email = "timothe.jost-mousseau@pasteur.fr" },
+]
+dependencies = [
+    "cellpose",
+    "matplotlib",
+    "natsort",
+    "numba>=0.57.0",
+    "numpy>=1.24.3",
+    "rastermap>=0.9.0",
+    "scanimage-tiff-reader>=1.4.1",
+    "scikit-learn",
+    "scipy>=1.9.0",
+    "tifffile",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/JostTim/suite2p"
+
+[project.optional-dependencies]
+gui = ["PyQt5", "pyqt6", "pyqt6.sip", "pyqtgraph", "qtpy"]
+nwb = ["pynwb>=2.3.2"]
+io = [
+    "h5py",
+    "nd2",
+    "opencv-python-headless",
+    "paramiko",
+    "sbxreader",
+    "xmltodict",
+]
+tests = ["pynwb>=2.3.2", "pytest", "pytest-qt>3.3.0", "tenacity", "tqdm"]
+all = [
+    "PyQt5",
+    "h5py",
+    "nd2",
+    "opencv-python-headless",
+    "paramiko",
+    "pynwb>=2.3.2",
+    "pynwb>=2.3.2",
+    "pyqt6",
+    "pyqt6.sip",
+    "pyqtgraph",
+    "pytest",
+    "pytest-qt>3.3.0",
+    "qtpy",
+    "sbxreader",
+    "tenacity",
+    "tqdm",
+    "xmltodict",
+]
+
+[project.scripts]
+reg_metrics = "benchmarks.registration_metrics:main"
+suite2p = "suite2p.__main__:main"
+tiff2scanimage = "scripts.make_tiff_scanimage_compatible:main"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.version]
+source = "file"
+path = "suite2p/__init__.py"
+
+[tool.pdm]
+distribution = true
