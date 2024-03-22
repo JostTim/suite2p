@@ -2,8 +2,8 @@
 name = "suite2p-haisslab"
 description = "Pipeline for calcium imaging"
 authors = [
-    { name = "Marius Pachitariu, Carsen Stringer", email = "timothe.jost-mousseau@pasteur.fr" },
     { name = "Timothe Jost-Mousseau", email = "timothe.jost-mousseau@pasteur.fr" },
+    { name = "Marius Pachitariu, Carsen Stringer" },
 ]
 dependencies = [
     "cellpose",
