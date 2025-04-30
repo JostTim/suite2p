@@ -61,6 +61,7 @@ all = [
     "tenacity",
     "tqdm",
     "xmltodict",
+    "dcimg",
 ]
 
 [project.scripts]
