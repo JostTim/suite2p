@@ -17,7 +17,6 @@ import numpy as np
 from . import extraction, io, registration, detection, classification
 from .default_ops import default_ops
 
-
 try:
     import pynwb
 
@@ -52,6 +51,13 @@ try:
     HAS_CV2 = True
 except ImportError:
     HAS_CV2 = False
+
+try:
+    import dcimg
+
+    HAS_DCIMG = True
+except ImportError:
+    HAS_DCIMG = False
 
 from functools import partial
 from pathlib import Path
@@ -351,13 +357,14 @@ def run_plane(ops, ops_path=None, stat=None):
 
     null = contextlib.nullcontext()
     twoc = ops["nchannels"] > 1
-    with io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file, n_frames=n_frames) if raw else null as f_raw, io.BinaryFile(
-        Ly=Ly, Lx=Lx, filename=reg_file, n_frames=n_frames
-    ) as f_reg, (
-        io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file_chan2, n_frames=n_frames) if raw and twoc else null
-    ) as f_raw_chan2, (
-        io.BinaryFile(Ly=Ly, Lx=Lx, filename=reg_file_chan2, n_frames=n_frames) if twoc else null
-    ) as f_reg_chan2:
+    with (
+        io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file, n_frames=n_frames) if raw else null as f_raw,
+        io.BinaryFile(Ly=Ly, Lx=Lx, filename=reg_file, n_frames=n_frames) as f_reg,
+        (
+            io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file_chan2, n_frames=n_frames) if raw and twoc else null
+        ) as f_raw_chan2,
+        io.BinaryFile(Ly=Ly, Lx=Lx, filename=reg_file_chan2, n_frames=n_frames) if twoc else null as f_reg_chan2,
+    ):
 
         ops = pipeline(f_reg, f_raw, f_reg_chan2, f_raw_chan2, run_registration, ops, stat=stat)
 
@@ -487,7 +494,11 @@ def run_s2p(ops={}, db={}, server={}):
             ops["input_format"] = "nd2"
             if not HAS_ND2:
                 raise ImportError("nd2 not found; pip install nd2")
-        elif not "input_format" in ops:
+        elif ops.get("dcimg"):
+            ops["input_format"] = "dcimg"
+            if not HAS_DCIMG:
+                raise ImportError("dcimg not found; pip install dcimg")
+        elif "input_format" not in ops:
             ops["input_format"] = "tif"
         elif ops["input_format"] == "movie":
             if not HAS_CV2:
@@ -503,6 +514,7 @@ def run_s2p(ops={}, db={}, server={}):
             "raw": io.raw_to_binary,
             "bruker": io.ome_to_binary,
             "movie": io.movie_to_binary,
+            "dcimg": io.dcimg_to_binary,
         }
         if ops["input_format"] in convert_funs:
             ops0 = convert_funs[ops["input_format"]](ops.copy())

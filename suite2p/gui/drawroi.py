@@ -1,8 +1,10 @@
 """
 Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
 """
+
 import os
 import time
+import math
 
 import numpy as np
 import pyqtgraph as pg
@@ -19,6 +21,7 @@ from qtpy.QtWidgets import (
 )
 from matplotlib.colors import hsv_to_rgb
 from scipy import stats
+from scipy.ndimage import rotate
 
 from . import io
 from ..extraction import masks
@@ -36,6 +39,7 @@ def masks_and_traces(ops, stat_manual, stat_orig):
     """
 
     t0 = time.time()
+
     # Concatenate stat so a good neuropil function can be formed
     stat_all = stat_manual.copy()
     for n in range(len(stat_orig)):
@@ -49,9 +53,7 @@ def masks_and_traces(ops, stat_manual, stat_orig):
         diameter=ops["diameter"],
     )
     cell_masks = [
-        masks.create_cell_mask(
-            stat, Ly=ops["Ly"], Lx=ops["Lx"], allow_overlap=ops["allow_overlap"]
-        )
+        masks.create_cell_mask(stat, Ly=ops["Ly"], Lx=ops["Lx"], allow_overlap=ops["allow_overlap"])
         for stat in stat_all
     ]
     cell_pix = masks.create_cell_pix(stat_all, Ly=ops["Ly"], Lx=ops["Lx"])
@@ -66,14 +68,10 @@ def masks_and_traces(ops, stat_manual, stat_orig):
     )
     print("Masks made in %0.2f sec." % (time.time() - t0))
 
-    F, Fneu, F_chan2, Fneu_chan2 = extract_traces_from_masks(
-        ops, manual_cell_masks, manual_neuropil_masks
-    )
+    F, Fneu, F_chan2, Fneu_chan2 = extract_traces_from_masks(ops, manual_cell_masks, manual_neuropil_masks)
 
     # compute activity statistics for classifier
-    npix = np.array([stat_orig[n]["npix"] for n in range(len(stat_orig))]).astype(
-        "float32"
-    )
+    npix = np.array([stat_orig[n]["npix"] for n in range(len(stat_orig))]).astype("float32")
     for n in range(len(manual_roi_stats)):
         manual_roi_stats[n]["npix_norm"] = manual_roi_stats[n]["npix"] / np.mean(
             npix[:100]
@@ -145,16 +143,8 @@ class ROIDraw(QMainWindow):
         self.l0 = QGridLayout()
         # layout = QtGui.QFormLayout()
         self.cwidget.setLayout(self.l0)
-        self.stylePressed = (
-            "QPushButton {Text-align: left; "
-            "background-color: rgb(100,50,100); "
-            "color:white;}"
-        )
-        self.styleUnpressed = (
-            "QPushButton {Text-align: left; "
-            "background-color: rgb(50,50,50); "
-            "color:white;}"
-        )
+        self.stylePressed = "QPushButton {Text-align: left; " "background-color: rgb(100,50,100); " "color:white;}"
+        self.styleUnpressed = "QPushButton {Text-align: left; " "background-color: rgb(50,50,50); " "color:white;}"
 
         # self.p0 = pg.ViewBox(lockAspect=False,name="plot1",border=[100,100,100],invertY=True)
         self.win = pg.GraphicsLayoutWidget()
@@ -168,9 +158,7 @@ class ROIDraw(QMainWindow):
         self.p1.setMenuEnabled(False)
         self.p1.scene().sigMouseMoved.connect(self.mouse_moved)
 
-        self.p0 = self.win.addViewBox(
-            name="plot1", lockAspect=True, row=0, col=0, invertY=True
-        )
+        self.p0 = self.win.addViewBox(name="plot1", lockAspect=True, row=0, col=0, invertY=True)
         self.img0 = pg.ImageItem()
         self.p0.addItem(self.img0)
 
@@ -332,9 +320,7 @@ class ROIDraw(QMainWindow):
         self.close()
 
     def normalize_img_add_masks(self):
-        masked_image = np.zeros(
-            ((self.Ly, self.Lx, 3, 5))
-        )  # 3 for RGB and 5 for buttons
+        masked_image = np.zeros(((self.Ly, self.Lx, 3, 5)))  # 3 for RGB and 5 for buttons
         for i in np.arange(5):  # 5 because 5 buttons
             if i == 0:
                 mimg = np.zeros((self.Ly, self.Lx), np.float32)
@@ -416,10 +402,7 @@ class ROIDraw(QMainWindow):
                 # print(self.ineuron)
 
     def keyPressEvent(self, event):
-        if (
-            event.modifiers() != QtCore.Qt.AltModifier
-            and event.modifiers() != QtCore.Qt.ShiftModifier
-        ):
+        if event.modifiers() != QtCore.Qt.AltModifier and event.modifiers() != QtCore.Qt.ShiftModifier:
             if event.key() == QtCore.Qt.Key_D:
                 self.ROIs[self.iROI].remove(self)
             elif event.key() == QtCore.Qt.Key_Y:
@@ -441,9 +424,7 @@ class ROIDraw(QMainWindow):
     def add_ROI(self, pos=None):
         self.iROI = len(self.ROIs)
         self.nROIs = len(self.ROIs)
-        self.ROIs.append(
-            sROI(iROI=self.nROIs, parent=self, pos=pos, diameter=int(self.diam.text()))
-        )
+        self.ROIs.append(sROI(iROI=self.nROIs, parent=self, pos=pos, diameter=int(self.diam.text())))
         self.ROIs[-1].position(self)
         self.nROIs += 1
         print("%d cells added to manual GUI" % self.nROIs)
@@ -492,24 +473,18 @@ class ROIDraw(QMainWindow):
             ypix = y[ellipse].flatten()
             xpix = x[ellipse].flatten()
             lam = np.ones(ypix.shape)
-            stat0.append(
-                {"ypix": ypix, "xpix": xpix, "lam": lam, "npix": ypix.size, "med": med}
-            )
+            stat0.append({"ypix": ypix, "xpix": xpix, "lam": lam, "npix": ypix.size, "med": med})
             self.tlabel.append(pg.TextItem(str(n), self.ROIs[n].color, anchor=(0, 0)))
             self.tlabel[-1].setPos(xpix.mean(), ypix.mean())
             self.p0.addItem(self.tlabel[-1])
-            self.scatter.append(
-                pg.ScatterPlotItem(
-                    [xpix.mean()], [ypix.mean()], pen=self.ROIs[n].color, symbol="+"
-                )
-            )
+            self.scatter.append(pg.ScatterPlotItem([xpix.mean()], [ypix.mean()], pen=self.ROIs[n].color, symbol="+"))
             self.p0.addItem(self.scatter[-1])
         if not os.path.isfile(self.parent.ops["reg_file"]):
             self.parent.ops["reg_file"] = os.path.join(self.parent.basename, "data.bin")
+        if "reg_file_chan2" in self.parent.ops and not os.path.isfile(self.parent.ops["reg_file_chan2"]):
+            self.parent.ops["reg_file_chan2"] = os.path.join(self.parent.basename, "data_chan2.bin")
 
-        F, Fneu, F_chan2, Fneu_chan2, spks, ops, stat = masks_and_traces(
-            self.parent.ops, stat0, self.parent.stat
-        )
+        F, Fneu, F_chan2, Fneu_chan2, spks, ops, stat = masks_and_traces(self.parent.ops, stat0, self.parent.stat)
         self.Fcell = F
         self.Fneu = Fneu
         self.F_chan2 = F_chan2
@@ -603,6 +578,7 @@ class sROI:
         self.ROI.handlePen = roipen
         self.ROI.addScaleHandle([1, 0.5], [0.0, 0.5])
         self.ROI.addScaleHandle([0.5, 0], [0.5, 1])
+        self.ROI.addRotateHandle([0.5, 1], [0.5, 0.5])
         self.ROI.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
         self.med = [imy, imx]
         parent.p0.addItem(self.ROI)
@@ -618,13 +594,24 @@ class sROI:
         parent.win.show()
         parent.show()
 
+    def rotate_ROI(self, parent, ellipse, xrange, yrange, posx, posy):
+        # Rotates ROI depending on Rotatehandle degree
+        ellipse = rotate(ellipse, angle=math.floor(self.ROI.angle()), order=0)
+        ellipse = np.flip(ellipse, axis=0)
+        xrange = (np.arange(-1 * int(ellipse.shape[1] - 1), 1) + int(posx)).astype(np.int32)
+        yrange = (np.arange(-1 * int(ellipse.shape[0] - 1), 1) + int(posy)).astype(np.int32)
+        yrange += int(np.floor(ellipse.shape[0] / 2)) + 1
+        return ellipse, xrange, yrange
+
     def position(self, parent):
         parent.iROI = self.iROI
         pos0 = self.ROI.getSceneHandlePositions()
+        sizex, sizey = self.ROI.size()
         pos = parent.p0.mapSceneToView(pos0[0][1])
+        br = self.ROI.boundingRect()
         posy = pos.y()
         posx = pos.x()
-        sizex, sizey = self.ROI.size()
+
         xrange = (np.arange(-1 * int(sizex), 1) + int(posx)).astype(np.int32)
         yrange = (np.arange(-1 * int(sizey), 1) + int(posy)).astype(np.int32)
         yrange += int(np.floor(sizey / 2)) + 1
@@ -633,16 +620,16 @@ class sROI:
         ellipse = np.zeros((yrange.size, xrange.size), "bool")
         x, y = np.meshgrid(np.arange(0, xrange.size, 1), np.arange(0, yrange.size, 1))
         ellipse = (
-            (y - br.center().y()) ** 2 / (br.height() / 2) ** 2
-            + (x - br.center().x()) ** 2 / (br.width() / 2) ** 2
+            (y - br.center().y()) ** 2 / (br.height() / 2) ** 2 + (x - br.center().x()) ** 2 / (br.width() / 2) ** 2
         ) <= 1
-
+        if self.ROI.angle() not in (0, 180, -180):
+            ellipse, xrange, yrange = self.rotate_ROI(parent, ellipse, xrange, yrange, posx, posy)
+        # ensures that ROI is not placed outside of movie coordinates
         ellipse = ellipse[:, np.logical_and(xrange >= 0, xrange < parent.Lx)]
         xrange = xrange[np.logical_and(xrange >= 0, xrange < parent.Lx)]
         ellipse = ellipse[np.logical_and(yrange >= 0, yrange < parent.Ly), :]
         yrange = yrange[np.logical_and(yrange >= 0, yrange < parent.Ly)]
 
-        # ellipse = lambda x,y: (((x+0.5)/(w/2.)-1)**2+ ((y+0.5)/(h/2.)-1)**2)**0.5 < 1, (w, h))
         self.ellipse = ellipse
         self.xrange = xrange
         self.yrange = yrange
