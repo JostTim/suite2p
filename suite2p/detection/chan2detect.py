@@ -1,10 +1,17 @@
 """
 Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
 """
+
 import numpy as np
+import traceback
 from scipy.ndimage import gaussian_filter
 from ..extraction import masks
 from . import utils
+
+from logging import getLogger
+
+logger = getLogger("suite2p.chan2detect")
+
 """
 identify cells with channel 2 brightness (aka red cells)
 
@@ -48,13 +55,12 @@ def correct_bleedthrough(Ly, Lx, nblks, mimg, mimg2):
 
 
 def intensity_ratio(ops, stats):
-    """ compute pixels in cell and in area around cell (including overlaps)
-        (exclude pixels from other cells) """
+    """compute pixels in cell and in area around cell (including overlaps)
+    (exclude pixels from other cells)"""
     Ly, Lx = ops["Ly"], ops["Lx"]
     cell_pix = masks.create_cell_pix(stats, Ly=ops["Ly"], Lx=ops["Lx"])
     cell_masks0 = [
-        masks.create_cell_mask(stat, Ly=ops["Ly"], Lx=ops["Lx"],
-                               allow_overlap=ops["allow_overlap"]) for stat in stats
+        masks.create_cell_mask(stat, Ly=ops["Ly"], Lx=ops["Lx"], allow_overlap=ops["allow_overlap"]) for stat in stats
     ]
     neuropil_ipix = masks.create_neuropil_masks(
         ypixs=[stat["ypix"] for stat in stats],
@@ -66,9 +72,10 @@ def intensity_ratio(ops, stats):
     cell_masks = np.zeros((len(stats), Ly * Lx), np.float32)
     neuropil_masks = np.zeros((len(stats), Ly * Lx), np.float32)
     for cell_mask, cell_mask0, neuropil_mask, neuropil_mask0 in zip(
-            cell_masks, cell_masks0, neuropil_masks, neuropil_ipix):
+        cell_masks, cell_masks0, neuropil_masks, neuropil_ipix
+    ):
         cell_mask[cell_mask0[0]] = cell_mask0[1]
-        neuropil_mask[neuropil_mask0.astype(np.int64)] = 1. / len(neuropil_mask0)
+        neuropil_mask[neuropil_mask0.astype(np.int64)] = 1.0 / len(neuropil_mask0)
 
     mimg2 = ops["meanImg_chan2"]
     inpix = cell_masks @ mimg2.flatten()
@@ -81,19 +88,17 @@ def intensity_ratio(ops, stats):
 
 def cellpose_overlap(stats, mimg2):
     from . import anatomical
+
     masks = anatomical.roi_detect(mimg2)[0]
     Ly, Lx = masks.shape
-    redstats = np.zeros((len(stats), 2),
-                        np.float32)  #changed the size of preallocated space
+    redstats = np.zeros((len(stats), 2), np.float32)  # changed the size of preallocated space
     for i in range(len(stats)):
         smask = np.zeros((Ly, Lx), np.uint16)
         ypix0, xpix0 = stats[i]["ypix"], stats[i]["xpix"]
         smask[ypix0, xpix0] = 1
         ious = utils.mask_ious(masks, smask)[0]
         iou = ious.max()
-        redstats[
-            i,
-        ] = np.array([iou > 0.25, iou])  #this had the wrong dimension
+        redstats[i,] = np.array([iou > 0.25, iou])  # this had the wrong dimension
     return redstats, masks
 
 
@@ -110,11 +115,12 @@ def detect(ops, stats):
     redstats = None
     if ops.get("anatomical_red", True):
         try:
-            print(">>>> CELLPOSE estimating masks in anatomical channel")
+            logger.info(">>>> CELLPOSE estimating masks in anatomical channel")
             redstats, masks = cellpose_overlap(stats, mimg2)
-        except:
-            print(
-                "ERROR importing or running cellpose, continuing without anatomical estimates"
+        except Exception as e:
+            logger.error(
+                f"ERROR importing or running cellpose, continuing without anatomical estimates. {e}. "
+                f"{traceback.format_exc()}"
             )
 
     if redstats is None:

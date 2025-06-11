@@ -3,7 +3,8 @@ name = "suite2p-haisslab"
 description = "Pipeline for calcium imaging"
 authors = [
     { name = "Timothe Jost-Mousseau", email = "timothe.jost-mousseau@pasteur.fr" },
-    { name = "Marius Pachitariu, Carsen Stringer" },
+    { name = "Marius Pachitariu" },
+    { name = "Carsen Stringer" },
 ]
 dependencies = [
     "cellpose",
@@ -32,7 +33,7 @@ dynamic = ["version"]
 Homepage = "https://github.com/JostTim/suite2p"
 
 [project.optional-dependencies]
-gui = ["PyQt5", "pyqt6", "pyqt6.sip", "pyqtgraph", "qtpy"]
+gui = ["PyQt5", "pyqt6", "pyqt6.sip", "pyqtgraph", "qtpy", "pyqt5-qt5==5.15.2"]
 nwb = ["pynwb>=2.3.2"]
 io = [
     "h5py",

@@ -5,7 +5,7 @@ Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer a
 import numpy as np
 from typing import Any, Dict
 from scipy.ndimage import find_objects, gaussian_filter
-from cellpose.models import CellposeModel, Cellpose
+from cellpose.models import CellposeModel
 from cellpose import transforms, dynamics
 from cellpose.utils import fill_holes_and_remove_small_masks
 from cellpose.transforms import normalize99
@@ -15,6 +15,10 @@ import os
 
 from . import utils
 from .stats import roi_stats
+
+from logging import getLogger
+
+logger = getLogger("suite2p.anatomical")
 
 
 def mask_centers(masks):
@@ -32,16 +36,16 @@ def mask_centers(masks):
 
 def patch_detect(patches, diam):
     """anatomical detection of masks from top active frames for putative cell"""
-    print("refining masks using cellpose")
+    logger.info("refining masks using cellpose")
     npatches = len(patches)
     ly = patches[0].shape[0]
-    model = Cellpose()
+    model = CellposeModel()
     imgs = np.zeros((npatches, ly, ly, 2), np.float32)
     for i, m in enumerate(patches):
         imgs[i, :, :, 0] = transforms.normalize99(m)
     rsz = 30.0 / diam
     imgs = transforms.resize_image(imgs, rsz=rsz).transpose(0, 3, 1, 2)
-    imgs, ysub, xsub = transforms.pad_image_ND(imgs)
+    imgs, ysub, xsub = transforms.pad_image_ND(imgs)  # type: ignore
 
     pmasks = np.zeros((npatches, ly, ly), np.uint16)
     batch_size = 8 * 224 // ly
@@ -60,7 +64,7 @@ def patch_detect(patches, diam):
             maski = transforms.resize_image(maski, ly, ly, interpolation=cv2.INTER_NEAREST)
             pmasks[j + i] = maski
         if j % 5 == 0:
-            print("%d / %d masks created in %0.2fs" % (j + batch_size, npatches, time.time() - tic))
+            logger.info("%d / %d masks created in %0.2fs" % (j + batch_size, npatches, time.time() - tic))
     return pmasks
 
 
@@ -101,9 +105,9 @@ def refine_masks(stats, patches, seeds, diam, Lyc, Lxc):
 def roi_detect(mproj, diameter=None, cellprob_threshold=0.0, flow_threshold=1.5, pretrained_model=None):
     pretrained_model = "cyto3" if pretrained_model is None else pretrained_model
     if not os.path.exists(pretrained_model):
-        model = Cellpose(model_type=pretrained_model)
+        model = CellposeModel(gpu=True, pretrained_model=pretrained_model)
     else:
-        model = CellposeModel(pretrained_model=pretrained_model)
+        model = CellposeModel(gpu=True, pretrained_model=pretrained_model)
     masks = model.eval(
         mproj, channels=[0, 0], diameter=diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold
     )[0]
@@ -112,7 +116,7 @@ def roi_detect(mproj, diameter=None, cellprob_threshold=0.0, flow_threshold=1.5,
     masks = masks.reshape(shape)
     centers, mask_diams = mask_centers(masks)
     median_diam = np.median(mask_diams)
-    print(">>>> %d masks detected, median diameter = %0.2f " % (masks.max(), median_diam))
+    logger.info(">>>> %d masks detected, median diameter = %0.2f " % (masks.max(), median_diam))
     return masks, centers, median_diam, mask_diams.astype(np.int32)
 
 
@@ -166,7 +170,7 @@ def select_rois(ops: Dict[str, Any], mov: np.ndarray, diameter=None):
             img = ops["meanImgE"][ops["yrange"][0] : ops["yrange"][1], ops["xrange"][0] : ops["xrange"][1]]
         else:
             img = mean_img
-            print("no enhanced mean image, using mean image instead")
+            logger.warning("no enhanced mean image, using mean image instead")
         weights = 0.1 + np.clip(
             (mean_img - np.percentile(mean_img, 1)) / (np.percentile(mean_img, 99) - np.percentile(mean_img, 1)), 0, 1
         )
@@ -183,11 +187,11 @@ def select_rois(ops: Dict[str, Any], mov: np.ndarray, diameter=None):
             rescale = 1.0
             diameter = [diameter, diameter]
         if diameter[1] > 0:
-            print("!NOTE! diameter set to %0.2f for cell detection with cellpose" % diameter[1])
+            logger.info("!NOTE! diameter set to %0.2f for cell detection with cellpose" % diameter[1])
         else:
-            print("!NOTE! diameter set to 0 or None, diameter will be estimated by cellpose")
+            logger.info("!NOTE! diameter set to 0 or None, diameter will be estimated by cellpose")
     else:
-        print("!NOTE! diameter set to 0 or None, diameter will be estimated by cellpose")
+        logger.info("!NOTE! diameter set to 0 or None, diameter will be estimated by cellpose")
 
     if ops.get("spatial_hp_cp", 0):
         img = np.clip(normalize99(img), 0, 1)
@@ -204,7 +208,7 @@ def select_rois(ops: Dict[str, Any], mov: np.ndarray, diameter=None):
         masks = cv2.resize(masks, (Lxc, Lyc), interpolation=cv2.INTER_NEAREST)
         img = cv2.resize(img, (Lxc, Lyc))
     stats = masks_to_stats(masks, weights)
-    print("Detected %d ROIs, %0.2f sec" % (len(stats), time.time() - t0))
+    logger.info("Detected %d ROIs, %0.2f sec" % (len(stats), time.time() - t0))
 
     new_ops = {
         "diameter": median_diam,
