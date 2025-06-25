@@ -3,7 +3,7 @@ Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer a
 """
 
 from .version import __version__
-from .default_ops import default_ops
+from .ops.default import default_ops
 from .run_s2p import run_s2p, run_plane, pipeline
 from .detection import ROI, detection_wrapper
 from .classification import classify

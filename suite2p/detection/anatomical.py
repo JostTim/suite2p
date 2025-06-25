@@ -3,6 +3,7 @@ Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer a
 """
 
 import numpy as np
+from pathlib import Path
 from typing import Any, Dict
 from scipy.ndimage import find_objects, gaussian_filter
 from cellpose.models import CellposeModel
@@ -13,8 +14,11 @@ import time
 import cv2
 import os
 
+from typing import cast
+
 from . import utils
 from .stats import roi_stats
+from .chan2detect import detect as chan2_detect
 
 from logging import getLogger
 
@@ -103,14 +107,18 @@ def refine_masks(stats, patches, seeds, diam, Lyc, Lxc):
 
 
 def roi_detect(mproj, diameter=None, cellprob_threshold=0.0, flow_threshold=1.5, pretrained_model=None):
-    pretrained_model = "cyto3" if pretrained_model is None else pretrained_model
-    if not os.path.exists(pretrained_model):
-        model = CellposeModel(gpu=True, pretrained_model=pretrained_model)
-    else:
-        model = CellposeModel(gpu=True, pretrained_model=pretrained_model)
-    masks = model.eval(
-        mproj, channels=[0, 0], diameter=diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold
-    )[0]
+    if pretrained_model is None:
+        pretrained_model = "cpsam"
+    elif not os.path.exists(pretrained_model):
+        pretrained_model = "cpsam"
+
+    model = CellposeModel(gpu=True, pretrained_model=pretrained_model)
+    logger.info(
+        f"Running evaluation with {diameter=}, {flow_threshold=}, {cellprob_threshold=} on model {pretrained_model}"
+    )
+    masks = model.eval(mproj, diameter=diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold)[
+        0
+    ]
     shape = masks.shape
     _, masks = np.unique(np.int32(masks), return_inverse=True)
     masks = masks.reshape(shape)
@@ -118,6 +126,92 @@ def roi_detect(mproj, diameter=None, cellprob_threshold=0.0, flow_threshold=1.5,
     median_diam = np.median(mask_diams)
     logger.info(">>>> %d masks detected, median diameter = %0.2f " % (masks.max(), median_diam))
     return masks, centers, median_diam, mask_diams.astype(np.int32)
+
+
+def cellpose_to_stats(ops: dict, save=True, remove_old_results=True, compute_additionnal_stats=True):
+
+    save_path = Path(ops["save_path"])
+
+    cellpose_seg = open_cellpose_seg_file(save_path / "meanImg_seg.npy")
+
+    # import cv2
+    # image_used = cv2.imread(cellpose_seg["filename"], -1)  # cv2.LOAD_IMAGE_ANYDEPTH)
+    # if image_used.ndim > 2:
+    #     image_used = image_used[..., [2, 1, 0]]
+
+    # image_used = cast(np.ndarray, image_used)
+
+    image_used = ops["meanImg"]
+
+    # weights calculation only works for situation of anatomical_only = 2 wich is when meanImg was used.
+    weights_image = 0.1 + np.clip(
+        (image_used - np.percentile(image_used, 1)) / (np.percentile(image_used, 99) - np.percentile(image_used, 1)),
+        0,
+        1,
+    )
+
+    stats = masks_to_stats(cellpose_seg["masks"], weights_image)
+    vars_to_copy = ["diameter", "cellprob_threshold", "flow_threshold"]
+    for var in vars_to_copy:
+        ops[var] = cellpose_seg[var]
+
+    if ops.get("ops_path"):
+        np.save(ops["ops_path"], ops)
+
+    if remove_old_results:
+        remove_previous_extraction_results(ops)
+
+    if compute_additionnal_stats:
+        stats = roi_stats(
+            stats,
+            Ly=ops["Ly"],
+            Lx=ops["Lx"],
+            aspect=ops.get("aspect", None),
+            diameter=ops.get("diameter", None),
+            max_overlap=ops.get("max_overlap", None),
+            do_crop=ops.get("soma_crop", 1),
+        )
+        if "meanImg_chan2" in ops.keys():
+            if "chan2_thres" not in ops:
+                ops["chan2_thres"] = 0.65
+            ops, redcell = chan2_detect(ops, stats)
+            # logger.info(f"saving redcell {type(redcell)} {redcell.shape} {redcell.dtype} {redcell}")
+            np.save(save_path / "redcell.npy", redcell)
+
+    if save:
+        np.save(save_path / "stat.npy", stats)
+
+    if ops.get("ops_path"):
+        np.save(ops["ops_path"], ops)
+
+    return stats, redcell
+
+
+def remove_previous_extraction_results(ops: dict):
+    save_path = Path(ops["save_path"])
+    files = list(save_path.glob("F*.npy"))
+    files.append(save_path / "iscell.npy")
+    files.append(save_path / "redcell.npy")
+    files.append(save_path / "spks.npy")
+
+    for file in files:
+        file.unlink(missing_ok=True)
+
+
+def open_cellpose_seg_file(cellpose_seg_file_path: str | Path):
+    return np.load(cellpose_seg_file_path, allow_pickle=True).item()
+
+
+def prepare_cellpose_from_ops(ops: dict):
+    # saves a meanimage in the suite2p save folder
+    import pImage
+    from PIL.Image import fromarray
+
+    save_path = Path(ops["save_path"])
+    image = fromarray(pImage.transformations.rescale_to_8bit(ops["meanImg"]), mode="L")
+    image.save(save_path / "meanImg.png")
+
+    return str(save_path / "meanImg.png")
 
 
 def masks_to_stats(masks, weights):

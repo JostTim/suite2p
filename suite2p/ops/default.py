@@ -2,7 +2,7 @@
 Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
 """
 
-from .version import __version__ as version
+from ..version import __version__ as version
 
 
 def default_ops():
@@ -17,7 +17,9 @@ def default_ops():
         "delete_bin": False,  # whether to delete binary file after processing
         "mesoscan": False,  # for reading in scanimage mesoscope files
         "bruker": False,  # whether or not single page BRUKER tiffs!
-        "bruker_bidirectional": False,  # bidirectional multiplane in bruker: 0, 1, 2, 2, 1, 0 (True) vs 0, 1, 2, 0, 1, 2 (False)
+        "bruker_bidirectional": (
+            False
+        ),  # bidirectional multiplane in bruker: 0, 1, 2, 2, 1, 0 (True) vs 0, 1, 2, 0, 1, 2 (False)
         "h5py": [],  # take h5py as input (deactivates data_path)
         "h5py_key": "data",  # key in h5py where data array is stored
         "nwb_file": "",  # take nwb file as input (deactivates data_path)
@@ -45,11 +47,15 @@ def default_ops():
         "aspect": 1.0,  # um/pixels in X / um/pixels in Y (for correct aspect ratio in GUI)
         # bidirectional phase offset
         "do_bidiphase": False,  # whether or not to compute bidirectional phase offset (applies to 2P recordings only)
-        "bidiphase": 0,  # Bidirectional Phase offset from line scanning (set by user). Applied to all frames in recording.
+        "bidiphase": (
+            0
+        ),  # Bidirectional Phase offset from line scanning (set by user). Applied to all frames in recording.
         "bidi_corrected": False,  # Whether to do bidirectional correction during registration
         # registration settings
         "do_registration": True,  # whether to register data (2 forces re-registration)
-        "two_step_registration": False,  # whether or not to run registration twice (useful for low SNR data). Set keep_movie_raw to True if setting this parameter to True.
+        "two_step_registration": (
+            False
+        ),  # whether or not to run registration twice (useful for low SNR data). Set keep_movie_raw to True if setting this parameter to True.
         "keep_movie_raw": False,  # whether to keep binary file of non-registered frames.
         "nimg_init": 300,  # subsampled frames for finding reference image
         "batch_size": 500,  # number of frames per batch
@@ -60,20 +66,26 @@ def default_ops():
         "subpixel": 10,  # precision of subpixel registration (1/subpixel steps)
         "smooth_sigma_time": 0,  # gaussian smoothing in time
         "smooth_sigma": 1.15,  # ~1 good for 2P recordings, recommend 3-5 for 1P recordings
-        "th_badframes": 1.0,  # this parameter determines which frames to exclude when determining cropping - set it smaller to exclude more frames
+        "th_badframes": (
+            1.0
+        ),  # this parameter determines which frames to exclude when determining cropping - set it smaller to exclude more frames
         "norm_frames": True,  # normalize frames when detecting shifts
         "force_refImg": False,  # if True, use refImg stored in ops if available
         "pad_fft": False,  # if True, pads image during FFT part of registration
         # non rigid registration settings
         "nonrigid": True,  # whether to use nonrigid registration
         "block_size": [128, 128],  # block size to register (** keep this a multiple of 2 **)
-        "snr_thresh": 1.2,  # if any nonrigid block is below this threshold, it gets smoothed until above this threshold. 1.0 results in no smoothing
+        "snr_thresh": (
+            1.2
+        ),  # if any nonrigid block is below this threshold, it gets smoothed until above this threshold. 1.0 results in no smoothing
         "maxregshiftNR": 5,  # maximum pixel shift allowed for nonrigid, relative to rigid
         # 1P settings
         "1Preg": False,  # whether to perform high-pass filtering and tapering
         "spatial_hp_reg": 42,  # window for spatial high-pass filtering before registration
         "pre_smooth": 0,  # whether to smooth before high-pass filtering before registration
-        "spatial_taper": 40,  # how much to ignore on edges (important for vignetted windows, for FFT padding do not set BELOW 3*ops["smooth_sigma"])
+        "spatial_taper": (
+            40
+        ),  # how much to ignore on edges (important for vignetted windows, for FFT padding do not set BELOW 3*ops["smooth_sigma"])
         # cell detection settings with suite2p
         "roidetect": True,  # whether or not to run ROI extraction
         "spikedetect": True,  # whether or not to run spike deconvolution
@@ -84,11 +96,15 @@ def default_ops():
         "max_iterations": 20,  # maximum number of iterations to do cell detection
         "threshold_scaling": 1.0,  # adjust the automatically determined threshold by this scalar multiplier
         "max_overlap": 0.75,  # cells with more overlap than this get removed during triage, before refinement
-        "high_pass": 100,  # running mean subtraction across bins with a window of size "high_pass" (use low values for 1P)
+        "high_pass": (
+            100
+        ),  # running mean subtraction across bins with a window of size "high_pass" (use low values for 1P)
         "spatial_hp_detect": 25,  # window for spatial high-pass filtering for neuropil subtraction before detection
         "denoise": False,  # denoise binned movie for cell detection in sparse_mode
         # cell detection settings with cellpose (used if anatomical_only > 0)
-        "anatomical_only": 0,  # run cellpose to get masks on 1: max_proj / mean_img; 2: mean_img; 3: mean_img enhanced, 4: max_proj
+        "anatomical_only": (
+            0
+        ),  # run cellpose to get masks on 1: max_proj / mean_img; 2: mean_img; 3: mean_img enhanced, 4: max_proj
         "diameter": 0,  # use diameter for cellpose, if 0 estimate diameter
         "cellprob_threshold": 0.0,  # cellprob_threshold for cellpose
         "flow_threshold": 1.5,  # flow_threshold for cellpose
@@ -100,7 +116,9 @@ def default_ops():
         "neuropil_extract": True,  # whether or not to extract neuropil; if False, Fneu is set to zero
         "inner_neuropil_radius": 2,  # number of pixels to keep between ROI and neuropil donut
         "min_neuropil_pixels": 350,  # minimum number of pixels in the neuropil
-        "lam_percentile": 50.0,  # percentile of lambda within area to ignore when excluding cell pixels for neuropil extraction
+        "lam_percentile": (
+            50.0
+        ),  # percentile of lambda within area to ignore when excluding cell pixels for neuropil extraction
         "allow_overlap": False,  # pixels that are overlapping are thrown out (False) or added to both ROIs (True)
         "use_builtin_classifier": False,  # whether or not to use built-in classifier for cell detection (overrides
         # classifier specified in classifier_path if set to True)

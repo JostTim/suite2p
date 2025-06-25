@@ -86,10 +86,15 @@ def intensity_ratio(ops, stats):
     return np.stack((redcell, redprob), axis=-1)
 
 
-def cellpose_overlap(stats, mimg2):
+def cellpose_overlap(stats, ops: dict, mimg2):
     from . import anatomical
 
-    masks = anatomical.roi_detect(mimg2)[0]
+    masks = anatomical.roi_detect(
+        mimg2,
+        diameter=ops.get("diameter", 10),
+        cellprob_threshold=ops.get("cellprob_threshold", 0.0),
+        flow_threshold=ops.get("flow_threshold", 0.4),
+    )[0]
     Ly, Lx = masks.shape
     redstats = np.zeros((len(stats), 2), np.float32)  # changed the size of preallocated space
     for i in range(len(stats)):
@@ -116,7 +121,7 @@ def detect(ops, stats):
     if ops.get("anatomical_red", True):
         try:
             logger.info(">>>> CELLPOSE estimating masks in anatomical channel")
-            redstats, masks = cellpose_overlap(stats, mimg2)
+            redstats, masks = cellpose_overlap(stats, ops, ops["meanImg_chan2_corrected"])
         except Exception as e:
             logger.error(
                 f"ERROR importing or running cellpose, continuing without anatomical estimates. {e}. "

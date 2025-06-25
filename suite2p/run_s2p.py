@@ -2,7 +2,7 @@
 Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
 """
 
-import os
+import os, glob
 import shutil
 import time
 from natsort import natsorted
@@ -15,7 +15,8 @@ import numpy as np
 # from scipy.io import savemat
 
 from . import extraction, io, registration, detection, classification
-from .default_ops import default_ops
+from .ops.default import default_ops
+from .ops import save_ops
 
 try:
     import pynwb
@@ -59,11 +60,8 @@ try:
 except ImportError:
     HAS_DCIMG = False
 
-from functools import partial
 from pathlib import Path
 from logging import getLogger
-
-print = partial(print, flush=True)
 
 
 def pipeline(
@@ -140,8 +138,7 @@ def pipeline(
         meanImgE = registration.compute_enhanced_mean_image(ops["meanImg"].astype(np.float32), ops)
         ops["meanImgE"] = meanImgE
 
-        if ops.get("ops_path"):
-            np.save(ops["ops_path"], ops)
+        save_ops(ops)
 
         plane_times["registration"] = time.time() - t11
         logger.info("Finished in %0.2f sec" % plane_times["registration"])
@@ -166,8 +163,7 @@ def pipeline(
                 align_by_chan2=align_by_chan2,
                 ops=ops,
             )
-            if ops.get("ops_path"):
-                np.save(ops["ops_path"], ops)
+            save_ops(ops)
             plane_times["two_step_registration"] = time.time() - t11
             logger.info("Finished in %0.2f sec" % plane_times["two_step_registration"])
 
@@ -184,8 +180,7 @@ def pipeline(
             ops = registration.get_pc_metrics(mov, ops)
             plane_times["registration_metrics"] = time.time() - t0
             logger.info("Finished in, %0.2f sec." % plane_times["registration_metrics"])
-            if ops.get("ops_path"):
-                np.save(ops["ops_path"], ops)
+            save_ops(ops)
 
     if ops.get("roidetect", True):
         n_frames, Ly, Lx = f_reg.shape
@@ -196,7 +191,14 @@ def pipeline(
 
         logger.info("----------- Starting")
         if stat is None:
-            ops, stat = detection.detection_wrapper(f_reg, ops=ops, classfile=classfile)
+            # read stat if exists, else compute it. You can force re-computation with roidetect > 1
+            fpath = ops["save_path"]
+            stat_path = os.path.join(fpath, "stat.npy")
+
+            if os.path.isfile(stat_path) and not ops.get("roidetect", True) > 1:
+                stat = np.load(stat_path, allow_pickle=True)
+            else:
+                ops, stat = detection.detection_wrapper(f_reg, ops=ops, classfile=classfile)
         plane_times["detection"] = time.time() - t11
         logger.info("----------- Finished in %0.2f sec." % plane_times["detection"])
 
@@ -211,8 +213,7 @@ def pipeline(
                 stat, f_reg, f_reg_chan2=f_reg_chan2, ops=ops
             )
             # save results
-            if ops.get("ops_path"):
-                np.save(ops["ops_path"], ops)
+            save_ops(ops)
 
             plane_times["extraction"] = time.time() - t11
             logger.info("----------- Finished in %0.2f sec." % plane_times["extraction"])
@@ -274,8 +275,7 @@ def pipeline(
     ops["timing"] = plane_times.copy()
     plane_runtime = time.time() - t1
     ops["timing"]["total_plane_runtime"] = plane_runtime
-    if ops.get("ops_path"):
-        np.save(ops["ops_path"], ops)
+    save_ops(ops)
 
     return ops  # , stat, F, Fneu, F_chan2, Fneu_chan2, spks, iscell, redcell
 
@@ -458,23 +458,29 @@ def run_s2p(ops={}, db={}, server={}):
     else:
         files_found_flag = False
 
-    if files_found_flag:
+    do_remove_files = ops.get("delete_exising_detection_files", True)
+    keep_previous_stat_file = ops.get("keep_previous_stat_file", True)
+
+    if files_found_flag and do_remove_files:
         logger.info(f"FOUND BINARIES AND OPS IN {ops_paths}")
         logger.info("removing previous detection and extraction files, if present")
+
         files_to_remove = [
-            "stat.npy",
-            "F.npy",
-            "Fneu.npy",
-            "F_chan2.npy",
-            "Fneu_chan2.npy",
+            "spks.npy",
             "iscell.npy",
-            "redcell.npy",
         ]
         for p in ops_paths:
             plane_folder = os.path.split(p)[0]
             for f in files_to_remove:
                 if os.path.exists(os.path.join(plane_folder, f)):
                     os.remove(os.path.join(plane_folder, f))
+            for f in glob.glob("F*.npy", root_dir=plane_folder):
+                if os.path.exists(os.path.join(plane_folder, f)):
+                    os.remove(os.path.join(plane_folder, f))
+            if not keep_previous_stat_file:
+                if os.path.exists(os.path.join(plane_folder, "stat.npy")):
+                    os.remove(os.path.join(plane_folder, "stat.npy"))
+
     # if not set up files and copy tiffs/h5py to binary
     else:
         if len(ops["h5py"]):

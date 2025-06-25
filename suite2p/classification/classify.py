@@ -1,24 +1,28 @@
 """
 Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
 """
+
 import numpy as np
 from pathlib import Path
 from typing import Union, Sequence
 from .classifier import Classifier
 
-builtin_classfile = Path(__file__).joinpath(
-    "../../classifiers/classifier.npy").resolve()
+from logging import getLogger
+
+builtin_classfile = Path(__file__).joinpath("../../classifiers/classifier.npy").resolve()
 user_classfile = Path.home().joinpath(".suite2p/classifiers/classifier_user.npy")
+
+logger = getLogger("suite2p.classify")
 
 
 def classify(
-        stat: np.ndarray,
-        classfile: Union[str, Path],
-        keys: Sequence[str] = ("npix_norm", "compact", "skew"),
+    stat: np.ndarray,
+    classfile: Union[str, Path],
+    keys: Sequence[str] = ("npix_norm", "compact", "skew"),
 ):
-    """ 
-    Main classification function 
-    
+    """
+    Main classification function
+
     Returns array of classifier output from classification process
 
     Parameters
@@ -41,6 +45,6 @@ def classify(
 
     """
     keys = list(set(keys).intersection(set(stat[0])))
-    print(keys)
+    logger.info(f"Classifying with keys : {keys}")
     iscell = Classifier(classfile, keys=keys).run(stat)
     return iscell
