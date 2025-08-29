@@ -17,6 +17,7 @@ dependencies = [
     "scikit-learn",
     "scipy>=1.9.0",
     "tifffile",
+    "mkl-fft",
 ]
 requires-python = ">=3.11"
 readme = "README.md"
