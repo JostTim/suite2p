@@ -34,7 +34,10 @@ dynamic = ["version"]
 Homepage = "https://github.com/JostTim/suite2p"
 
 [project.optional-dependencies]
-gui = ["PyQt5", "pyqt6", "pyqt6.sip", "pyqtgraph", "qtpy", "pyqt5-qt5==5.15.2"]
+gui = [
+    "pyqt6",
+    "pyqt6.sip",
+] #, "pyqtgraph", "qtpy"] #  "PyQt5" "pyqt5-qt5==5.15.2"
 nwb = ["pynwb>=2.3.2"]
 io = [
     "h5py",
@@ -46,7 +49,7 @@ io = [
 ]
 tests = ["pynwb>=2.3.2", "pytest", "pytest-qt>3.3.0", "tenacity", "tqdm"]
 all = [
-    "PyQt5",
+    # "PyQt5",
     "h5py",
     "nd2",
     "opencv-python-headless",
