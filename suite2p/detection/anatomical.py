@@ -128,11 +128,15 @@ def roi_detect(mproj, diameter=None, cellprob_threshold=0.0, flow_threshold=1.5,
     return masks, centers, median_diam, mask_diams.astype(np.int32)
 
 
-def cellpose_to_stats(ops: dict, save=True, remove_old_results=True, compute_additionnal_stats=True):
+def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_additionnal_stats=True):
 
     save_path = Path(ops["save_path"])
 
-    cellpose_seg = open_cellpose_seg_file(save_path / "meanImg_seg.npy")
+    cellpose_image_key = ops.get("cellpose_image_key")
+    if cellpose_image_key is None :
+        raise ValueError("cellpose_image_key not found in ops. Be sure that you ran prepare_cellpose_from_ops and cellpose.gui.run first.")
+
+    cellpose_seg = open_cellpose_seg_file(save_path / f"{cellpose_image_key}_seg.npy")
 
     # import cv2
     # image_used = cv2.imread(cellpose_seg["filename"], -1)  # cv2.LOAD_IMAGE_ANYDEPTH)
@@ -141,7 +145,7 @@ def cellpose_to_stats(ops: dict, save=True, remove_old_results=True, compute_add
 
     # image_used = cast(np.ndarray, image_used)
 
-    image_used = ops["meanImg"]
+    image_used = ops[cellpose_image_key]
 
     # weights calculation only works for situation of anatomical_only = 2 wich is when meanImg was used.
     weights_image = 0.1 + np.clip(
@@ -199,19 +203,30 @@ def remove_previous_extraction_results(ops: dict):
 
 
 def open_cellpose_seg_file(cellpose_seg_file_path: str | Path):
+    # cellpose gui saves a file name from the input you gave such that : {input}.png becomes {input}_seg.npy
     return np.load(cellpose_seg_file_path, allow_pickle=True).item()
 
 
-def prepare_cellpose_from_ops(ops: dict):
+def prepare_cellpose_from_ops(ops: dict, cellpose_image_key = "meanImg"):
     # saves a meanimage in the suite2p save folder
     import pImage
     from PIL.Image import fromarray
 
-    save_path = Path(ops["save_path"])
-    image = fromarray(pImage.transformations.rescale_to_8bit(ops["meanImg"]), mode="L")
-    image.save(save_path / "meanImg.png")
+    cellpose_image_filename = f"{cellpose_image_key}.png"
+    image_path = Path(ops["save_path"]) / cellpose_image_filename
 
-    return str(save_path / "meanImg.png")
+    image = fromarray(pImage.transformations.rescale_to_8bit(ops[cellpose_image_key]), mode="L")
+    image.save(image_path)
+
+    # update the ops metadata file from newly added options
+    ops["cellpose_image_key"] = cellpose_image_key
+    ops["cellpose_image_filename"] = cellpose_image_filename
+
+    if ops.get("ops_path"):
+        # if we know where to save the metadata, save newly added options from the updated ops dict
+        np.save(ops["ops_path"], ops)
+
+    return str(image_path)
 
 
 def masks_to_stats(masks, weights):
