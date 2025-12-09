@@ -201,7 +201,7 @@ def roi_stats(stat, Ly: int, Lx: int, aspect=None, diameter=None, max_overlap=No
     computes statistics of ROIs
     Parameters
     ----------
-    stat : dictionary
+    stat : list of dictionaries
         "ypix", "xpix", "lam"
     
     FOV size : (Ly, Lx)
@@ -212,7 +212,7 @@ def roi_stats(stat, Ly: int, Lx: int, aspect=None, diameter=None, max_overlap=No
     
     Returns
     -------
-    stat : dictionary
+    stat : list of dictionaries
         adds "npix", "npix_norm", "med", "footprint", "compact", "radius", "aspect_ratio"
     """
     if "med" not in stat[0]:

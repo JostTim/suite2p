@@ -7,6 +7,7 @@ from os import path
 from typing import Dict, Any
 from warnings import warn
 
+from joblib import PrintTime
 from tqdm import tqdm
 import numpy as np
 from scipy.signal import medfilt, medfilt2d
@@ -316,6 +317,10 @@ def register_frames(refAndMasks, frames, rmin=-np.inf, rmax=np.inf, bidiphase=0,
             if ops["smooth_sigma_time"] or ops["1Preg"]:
                 for fsm, dy, dx in zip(fsmooth, ymax, xmax):
                     fsm[:] = rigid.shift_frame(frame=fsm, dy=dy, dx=dx)
+
+            print('fsmooth', fsmooth.shape)
+            data=np.clip(fsmooth, rmin, rmax) if rmin > -np.inf else fsmooth
+            print('data', data.shape)
 
             ymax1, xmax1, cmax1 = nonrigid.phasecorr(
                 data=np.clip(fsmooth, rmin, rmax) if rmin > -np.inf else fsmooth,
