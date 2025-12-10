@@ -175,12 +175,12 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
             max_overlap=ops.get("max_overlap", None),
             do_crop=ops.get("soma_crop", 1),
         )
-        if "meanImg_chan2" in ops.keys():
-            if "chan2_thres" not in ops:
-                ops["chan2_thres"] = 0.65
-            ops, redcell = chan2_detect(ops, stats)
-            # logger.info(f"saving redcell {type(redcell)} {redcell.shape} {redcell.dtype} {redcell}")
-            np.save(save_path / "redcell.npy", redcell)
+    if compute_chan_2stats and "meanImg_chan2" in ops.keys():
+        if "chan2_thres" not in ops:
+            ops["chan2_thres"] = 0.65
+        ops, redcell = chan2_detect(ops, stats)
+        # logger.info(f"saving redcell {type(redcell)} {redcell.shape} {redcell.dtype} {redcell}")
+        np.save(save_path / "redcell.npy", redcell)
 
     if save:
         np.save(save_path / "stat.npy", stats)
