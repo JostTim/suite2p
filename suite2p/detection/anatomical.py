@@ -175,6 +175,8 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
             max_overlap=ops.get("max_overlap", None),
             do_crop=ops.get("soma_crop", 1),
         )
+        
+    redcell = None,
     if compute_chan_2stats and "meanImg_chan2" in ops.keys():
         if "chan2_thres" not in ops:
             ops["chan2_thres"] = 0.65
