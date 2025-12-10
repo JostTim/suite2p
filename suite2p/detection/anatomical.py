@@ -128,7 +128,7 @@ def roi_detect(mproj, diameter=None, cellprob_threshold=0.0, flow_threshold=1.5,
     return masks, centers, median_diam, mask_diams.astype(np.int32)
 
 
-def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_additionnal_stats=True):
+def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_additionnal_stats=True, compute_chan_2stats = True):
 
     save_path = Path(ops["save_path"])
 
@@ -163,7 +163,7 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
         np.save(ops["ops_path"], ops)
 
     if remove_old_results:
-        remove_previous_extraction_results(ops)
+        remove_previous_extraction_results(ops, remove_redcell = compute_chan_2stats)
 
     if compute_additionnal_stats:
         stats = roi_stats(
@@ -191,11 +191,12 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
     return stats, redcell
 
 
-def remove_previous_extraction_results(ops: dict):
+def remove_previous_extraction_results(ops: dict, remove_redcell = True):
     save_path = Path(ops["save_path"])
     files = list(save_path.glob("F*.npy"))
     files.append(save_path / "iscell.npy")
-    files.append(save_path / "redcell.npy")
+    if remove_redcell:
+        files.append(save_path / "redcell.npy")
     files.append(save_path / "spks.npy")
 
     for file in files:
