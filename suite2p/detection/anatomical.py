@@ -132,11 +132,16 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
 
     save_path = Path(ops["save_path"])
 
-    cellpose_image_key = ops.get("cellpose_image_key")
-    if cellpose_image_key is None :
-        raise ValueError("cellpose_image_key not found in ops. Be sure that you ran prepare_cellpose_from_ops and cellpose.gui.run first.")
+    cellpose_image_key = ops.get("cellpose_image_key", "meanImg")
+    # cellpose_seg = open_cellpose_seg_file(save_path / "meanImg_seg.npy")
 
-    cellpose_seg = open_cellpose_seg_file(save_path / f"{cellpose_image_key}_seg.npy")
+    seg_file_path = save_path / f"{cellpose_image_key}_seg.npy"
+    if not seg_file_path.exists():
+        raise FileNotFoundError(f"Cellpose segmentation file not found at: {seg_file_path}\n"
+                                "Please ensure you have saved from the cellpose GUI.")
+    
+    cellpose_seg = open_cellpose_seg_file(seg_file_path)
+
 
     # import cv2
     # image_used = cv2.imread(cellpose_seg["filename"], -1)  # cv2.LOAD_IMAGE_ANYDEPTH)
@@ -145,7 +150,11 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
 
     # image_used = cast(np.ndarray, image_used)
 
+    if cellpose_image_key not in ops:
+         raise KeyError(f"The key '{cellpose_image_key}' was not found in the suite2p ops dictionary.")
+    
     image_used = ops[cellpose_image_key]
+    # image_used = ops["meanImg"]
 
     # weights calculation only works for situation of anatomical_only = 2 wich is when meanImg was used.
     weights_image = 0.1 + np.clip(
@@ -163,7 +172,7 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
         np.save(ops["ops_path"], ops)
 
     if remove_old_results:
-        remove_previous_extraction_results(ops, remove_redcell = compute_chan_2stats)
+        remove_previous_extraction_results(ops)
 
     if compute_additionnal_stats:
         stats = roi_stats(
@@ -175,14 +184,12 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
             max_overlap=ops.get("max_overlap", None),
             do_crop=ops.get("soma_crop", 1),
         )
-        
-    redcell = None
-    if compute_chan_2stats and "meanImg_chan2" in ops.keys():
-        if "chan2_thres" not in ops:
-            ops["chan2_thres"] = 0.65
-        ops, redcell = chan2_detect(ops, stats)
-        # logger.info(f"saving redcell {type(redcell)} {redcell.shape} {redcell.dtype} {redcell}")
-        np.save(save_path / "redcell.npy", redcell)
+        if "meanImg_chan2" in ops.keys():
+            if "chan2_thres" not in ops:
+                ops["chan2_thres"] = 0.65
+            ops, redcell = chan2_detect(ops, stats)
+            # logger.info(f"saving redcell {type(redcell)} {redcell.shape} {redcell.dtype} {redcell}")
+            np.save(save_path / "redcell.npy", redcell)
 
     if save:
         np.save(save_path / "stat.npy", stats)
@@ -191,7 +198,6 @@ def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_
         np.save(ops["ops_path"], ops)
 
     return stats, redcell
-
 
 def remove_previous_extraction_results(ops: dict, remove_redcell = True):
     save_path = Path(ops["save_path"])
@@ -210,26 +216,26 @@ def open_cellpose_seg_file(cellpose_seg_file_path: str | Path):
     return np.load(cellpose_seg_file_path, allow_pickle=True).item()
 
 
-def prepare_cellpose_from_ops(ops: dict, cellpose_image_key = "meanImg"):
+def prepare_cellpose_from_ops(ops: dict, cellpose_image_key: str = "meanImg"):
     # saves a meanimage in the suite2p save folder
     import pImage
     from PIL.Image import fromarray
 
-    cellpose_image_filename = f"{cellpose_image_key}.png"
-    image_path = Path(ops["save_path"]) / cellpose_image_filename
+    save_path = Path(ops["save_path"])
 
-    image = fromarray(pImage.transformations.rescale_to_8bit(ops[cellpose_image_key]), mode="L")
-    image.save(image_path)
+    if cellpose_image_key not in ops:
+        raise KeyError(f"The key '{cellpose_image_key}' was not found in the suite2p ops dictionary. "
+                       f"Available keys include: {[k for k in ops if 'Img' in k or 'proj' in k]}")
+    
+    image_data = ops[cellpose_image_key]
 
-    # update the ops metadata file from newly added options
-    ops["cellpose_image_key"] = cellpose_image_key
-    ops["cellpose_image_filename"] = cellpose_image_filename
+    image = fromarray(pImage.transformations.rescale_to_8bit(image_data), mode="L")
 
-    if ops.get("ops_path"):
-        # if we know where to save the metadata, save newly added options from the updated ops dict
-        np.save(ops["ops_path"], ops)
+    output_filename = f"{cellpose_image_key}.png"
+    output_path = save_path / output_filename
+    image.save(output_path)
 
-    return str(image_path)
+    return str(output_path)
 
 
 def masks_to_stats(masks, weights):
