@@ -108,6 +108,7 @@ def cellpose_overlap(stats, ops: dict, mimg2):
 
 
 def detect(ops, stats):
+    # TODO : MAKE THE 
     mimg = ops["meanImg"].copy()
     mimg2 = ops["meanImg_chan2"].copy()
 

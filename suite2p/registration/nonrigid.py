@@ -263,10 +263,10 @@ def phasecorr(
             x2 = x1 + window
             cc0[n] = np.real(Y[0, n, y1:y2, x1:x2])
 
-        print("cc0.shape", cc0.shape)
-        print("nb", nb, "nimg", nimg, "window", window)
-        print("target size", nb * nimg * (window) ** 2)
-        print("actual size", cc0.size)
+        # print("cc0.shape", cc0.shape)
+        # print("nb", nb, "nimg", nimg, "window", window)
+        # print("target size", nb * nimg * (window) ** 2)
+        # print("actual size", cc0.size)
 
         cc0 = cc0.reshape(nb, window * window)
         cc2 = [cc0, NRsm @ cc0, NRsm @ NRsm @ cc0]
@@ -276,8 +276,13 @@ def phasecorr(
         ]
 
     else:
-        cc0 = cc0.transpose(1, 0, 2, 3)
+        # cc0 = cc0.transpose(1, 0, 2, 3)
         cc0 = cc0.reshape(cc0.shape[0], -1)
+
+        # print("cc0.shape", cc0.shape)
+        # print("nb", nb, "nimg", nimg, "window", window)
+        # print("target size", nb * nimg * (window) ** 2)
+        # print("actual size", cc0.size)
 
         cc2 = [cc0, NRsm @ cc0, NRsm @ NRsm @ cc0]
         cc2 = [c2.reshape(nb, nimg, window, window) for c2 in cc2]

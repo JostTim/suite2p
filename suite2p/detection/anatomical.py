@@ -128,11 +128,20 @@ def roi_detect(mproj, diameter=None, cellprob_threshold=0.0, flow_threshold=1.5,
     return masks, centers, median_diam, mask_diams.astype(np.int32)
 
 
-def cellpose_to_stats(ops: dict, save=True, remove_old_results=True, compute_additionnal_stats=True):
+def cellpose_to_stats(ops: dict, /, save=True, remove_old_results=True, compute_additionnal_stats=True, compute_chan_2stats = True):
 
     save_path = Path(ops["save_path"])
 
-    cellpose_seg = open_cellpose_seg_file(save_path / "meanImg_seg.npy")
+    cellpose_image_key = ops.get("cellpose_image_key", "meanImg")
+    # cellpose_seg = open_cellpose_seg_file(save_path / "meanImg_seg.npy")
+
+    seg_file_path = save_path / f"{cellpose_image_key}_seg.npy"
+    if not seg_file_path.exists():
+        raise FileNotFoundError(f"Cellpose segmentation file not found at: {seg_file_path}\n"
+                                "Please ensure you have saved from the cellpose GUI.")
+    
+    cellpose_seg = open_cellpose_seg_file(seg_file_path)
+
 
     # import cv2
     # image_used = cv2.imread(cellpose_seg["filename"], -1)  # cv2.LOAD_IMAGE_ANYDEPTH)
@@ -141,7 +150,11 @@ def cellpose_to_stats(ops: dict, save=True, remove_old_results=True, compute_add
 
     # image_used = cast(np.ndarray, image_used)
 
-    image_used = ops["meanImg"]
+    if cellpose_image_key not in ops:
+         raise KeyError(f"The key '{cellpose_image_key}' was not found in the suite2p ops dictionary.")
+    
+    image_used = ops[cellpose_image_key]
+    # image_used = ops["meanImg"]
 
     # weights calculation only works for situation of anatomical_only = 2 wich is when meanImg was used.
     weights_image = 0.1 + np.clip(
@@ -186,12 +199,12 @@ def cellpose_to_stats(ops: dict, save=True, remove_old_results=True, compute_add
 
     return stats, redcell
 
-
-def remove_previous_extraction_results(ops: dict):
+def remove_previous_extraction_results(ops: dict, remove_redcell = True):
     save_path = Path(ops["save_path"])
     files = list(save_path.glob("F*.npy"))
     files.append(save_path / "iscell.npy")
-    files.append(save_path / "redcell.npy")
+    if remove_redcell:
+        files.append(save_path / "redcell.npy")
     files.append(save_path / "spks.npy")
 
     for file in files:
@@ -199,19 +212,30 @@ def remove_previous_extraction_results(ops: dict):
 
 
 def open_cellpose_seg_file(cellpose_seg_file_path: str | Path):
+    # cellpose gui saves a file name from the input you gave such that : {input}.png becomes {input}_seg.npy
     return np.load(cellpose_seg_file_path, allow_pickle=True).item()
 
 
-def prepare_cellpose_from_ops(ops: dict):
+def prepare_cellpose_from_ops(ops: dict, cellpose_image_key: str = "meanImg"):
     # saves a meanimage in the suite2p save folder
     import pImage
     from PIL.Image import fromarray
 
     save_path = Path(ops["save_path"])
-    image = fromarray(pImage.transformations.rescale_to_8bit(ops["meanImg"]), mode="L")
-    image.save(save_path / "meanImg.png")
 
-    return str(save_path / "meanImg.png")
+    if cellpose_image_key not in ops:
+        raise KeyError(f"The key '{cellpose_image_key}' was not found in the suite2p ops dictionary. "
+                       f"Available keys include: {[k for k in ops if 'Img' in k or 'proj' in k]}")
+    
+    image_data = ops[cellpose_image_key]
+
+    image = fromarray(pImage.transformations.rescale_to_8bit(image_data), mode="L")
+
+    output_filename = f"{cellpose_image_key}.png"
+    output_path = save_path / output_filename
+    image.save(output_path)
+
+    return str(output_path)
 
 
 def masks_to_stats(masks, weights):
