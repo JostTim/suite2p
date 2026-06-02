@@ -1,0 +1,4 @@
+exclude = [".py"]
+
+[format]
+exclude = ["*.py"]

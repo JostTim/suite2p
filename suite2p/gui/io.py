@@ -375,9 +375,14 @@ def load_to_GUI(parent, basename, procs):
 
 
 def load_behavior(parent):
-    name = QFileDialog.getOpenFileName(parent, "Open *.npy", filter="*.npy")
+    try :
+        selected_path = os.path.split(parent.fname)[0]
+    except Exception:
+        selected_path = None
+
+    name = QFileDialog.getOpenFileName(parent, "Open *.npy", selected_path, filter="*.npy")
     name = name[0]
-    bloaded = False
+    parent.bloaded = False
     try:
         beh = np.load(name)
         bresample = False

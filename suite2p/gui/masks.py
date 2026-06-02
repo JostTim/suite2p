@@ -109,7 +109,10 @@ def make_colors(parent):
     parent.colors["cols"] = np.zeros((len(parent.color_names), ncells, 3), np.uint8)
     parent.colors["istat"] = np.zeros((len(parent.color_names), ncells), np.float32)
     np.random.seed(seed=0)
-    allcols = np.random.random((ncells,))
+    # allcols = np.random.random((ncells,))
+    # change here to have random colors (between 0 and 1) or fixed colors.
+    allcols = np.ones((ncells,), dtype=float) / 1.5
+
     if "meanImg_chan2" in parent.ops:
         allcols = allcols / 1.4
         allcols = allcols + 0.1
