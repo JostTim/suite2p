@@ -59,6 +59,10 @@ suite2p = "suite2p.__main__:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["suite2p"]
+include = ["suite2p/*.py", "suite2p/*.pyi", "suite2p/*.png", "suite2p/*.npy"]
+
 [tool.uv]
 package = true
 
