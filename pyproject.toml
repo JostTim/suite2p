@@ -6,6 +6,7 @@ authors = [
     { name = "Carsen Stringer" },
     { name = "Timothe Jost-Mousseau", email = "timothe.jost-mousseau@pasteur.fr" },
 ]
+version = "1.0.0.2"
 dependencies = [
     "natsort",
     "tifffile",
@@ -26,7 +27,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
 ]
-dynamic = ["version"]
 
 [project.urls]
 Source = "https://github.com/JostTim/suite2p"
@@ -67,7 +67,7 @@ files = [
     { filename = "suite2p/version.py", search = "version = \"{current_version}\"", replace = "version = \"{new_version}\"" },
     { filename = "pyproject.toml", search = "version = \"{current_version}\"", replace = "version = \"{new_version}\"" },
 ]
-current_version = "1.0.0.1"
+current_version = "1.0.0.2"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+).(?P<commit>\\d+)"
 serialize = ["{major}.{minor}.{patch}.{commit}"]
 regex = false
